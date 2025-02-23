@@ -20,10 +20,10 @@ C++ is a stongly typed language.
 
 Fundamental types
 
-* (CV) void
-* (CV) std::nullptr
-* integral types (i.e. bool, char, unsiged char, int, long, ...)
-* floating-point types
+* (CV) `void`
+* (CV) `std::nullptr`
+* integral types (i.e. `bool`, `char`, `unsiged char`, `int`, `long`, ...)
+* floating-point types (i.e. `float`, `double`)
 
 Others (selection)
 
@@ -33,10 +33,10 @@ Others (selection)
 
 Types we use for TMP are program defined types like
 
-* class (struct)
-* enum
+* `class` (`struct`)
+* `enum`
 * typedefs
-* type alias (using)
+* type alias (`using`)
 
 [source,C++]
 ----
@@ -57,9 +57,9 @@ With templates, we can make a functions or a classes generic.
 A template is parametrized by it template parameters.
 Template parameters can be one of the following
 
-* A type (i.e. int, my_struct)
-* A non-type template parameter (i.e. an integral type, auto)
-* A template template (i.e. template<template <typename>T>)
+* A generic type (which can be instantiated with `int`, `my_struct`, ...)
+* A non-type template parameter (i.e. an integral type, `auto`)
+* A template template parameter (i.e. `template<template <typename>T>`)
 
 Templating a function:
 
@@ -136,9 +136,9 @@ static_assert(my_values<int, 1,2,3>::value[1] == 2);
 
 ----
 
-The ... after typename or the type gives us a pack.
-The ... after the argument unpacks the pack. {V...} in our example.
-sizeof...(Agument) gives us the number of types/values supplied in the template instantiation.
+The `...` after `typename` or the type gives us a pack.
+The `...` after the argument unpacks the pack. {`V...`} in our example.
+`sizeof...(Argument)` gives us the number of types/values supplied in the template instantiation.
 
 Our value example instantiates to following:
 
@@ -164,7 +164,7 @@ Keep this in mind, because it is how we make branches in out meta programming.
 
 [source,C++]
 ----
-template<typename T, auto VAL>
+template<typename T, T VAL>
 struct my_struct {
     using type = T;
     static constexpr T value = VAL;
@@ -197,8 +197,8 @@ static_assert(my_struct<int, 42>::full_specialized == true);
 === Traits
 
 Now that we know how to specialize template, we can use that to extract more information from a type.
-We call such construct a trait.
-In the examples above we were already using a trait called is_same.
+We call such a construct a trait.
+In the examples above we were already using a trait called `is_same`.
 
 [source,C++]
 ----
@@ -272,8 +272,8 @@ static_assert(std::is_same_v<get_type_t<other_type>, void>);
 ----
 
 There is a convention in the C++ community and libraries that type aliases used for traits are called "type",
-and values are called "value". The trait that obtains a type is underscored with _t, the value trait with _v.
-We can already see that in std::is_same<typename, typename>_v, which exposes a constexpr bool of the trait.
+and values are called "value". The trait that obtains a type is underscored with `_t`, the value trait with `_v`.
+We can already see that in `std::is_same<typename, typename>_v`, which exposes a `constexpr bool` of the trait.
 
 
 == What are we doing with TMP
