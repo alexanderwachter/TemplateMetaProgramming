@@ -1,0 +1,446 @@
+= Template Meta Programming
+
+== Disclaimer
+
+I'm whether an expert in C++ nor TMP.
+There are good books around, like Modern C++ design, which are written by experts.
+This guide is not complete and may contain errors, because of my misunderstanding of some (maybe even basic) concepts.
+
+== Glossary
+
+[cols="1,1"]
+|===
+|TMP |Template Meta Programming
+|CV |Const and Volatile Qualifiers
+
+|===
+
+== Types in C++
+C++ is a stongly typed language.
+
+Fundamental types
+
+* (CV) void
+* (CV) std::nullptr
+* integral types (i.e. bool, char, unsiged char, int, long, ...)
+* floating-point types
+
+Others (selection)
+
+* enumeration types
+* pointer types
+* pointer to member types
+
+Types we use for TMP are program defined types like
+
+* class (struct)
+* enum
+* typedefs
+* type alias (using)
+
+[source,C++]
+----
+#include <type_traits>
+
+struct my_struct {}; // is a type
+struct other {}; // is another type
+
+// static_assert gives a compiler warning if not true
+// is_same<> checks if two types are the same
+// as per convention, there is a *_v for any trait, that gives a value from a trait
+static_assert(!std::is_same_v<my_struct, other>);
+static_assert(!std::is_same_v<my_struct, const my_struct>);
+----
+
+== C++ templates
+With templates, we can make a functions or a classes generic.
+A template is parametrized by it template parameters.
+Template parameters can be one of the following
+
+* A type (i.e. int, my_struct)
+* A non-type template parameter (i.e. an integral type, auto)
+* A template template (i.e. template<template <typename>T>)
+
+Templating a function:
+
+[source,C++]
+----
+template<typename T>
+constexpr T add(T a, T b)
+{
+    return a + b;
+}
+
+static_assert(add(1, 1) == 2);
+static_assert(add(true, true) == true);
+
+// since C++20
+const auto add(auto a, decltype(a) b) -> decltype(a)
+{
+    return a + b;
+}
+----
+
+But we are more interested in templating our own types (class template)!
+Note that for TMP we mostly use empty structs.
+We usually do not create an instance from them, but use them as types.
+
+[source,C++]
+----
+#include <type_traits>
+
+template<typename T, auto VAL>
+struct my_struct {
+    using type = T;
+    static constexpr T value = VAL;
+};
+
+static_assert(my_struct<unsigned long, 5U>::value == 5U);
+static_assert(std::is_same_v<my_struct<unsigned long, 5U>::type, unsigned long>);
+----
+
+and type aliases or constants
+
+[source,C++]
+----
+#include <type_traits>
+#include <cstddef>
+
+template<typename T>
+static constexpr std::size_t size_v = sizeof(T);
+
+template<auto T>
+using type_t = decltype(T);
+
+static_assert(size_v<int> == sizeof(int));
+static_assert(std::is_same_v<type_t<42UL>, unsigned long>);
+----
+
+With variadic template arguments (pack), you can make your templates a bit more flexible (since C++11).
+You can supply any number of arguments by using following syntax:
+
+[source,C++]
+----
+#include <array>
+
+template<typename... T>
+struct my_type{};
+
+template<typename T, int... V>
+struct my_values{
+    static constexpr std::array<T, sizeof...(V)> value = {V...,};
+};
+
+my_type<bool, char, int> a;
+static_assert(my_values<int, 1,2,3>::value[1] == 2);
+
+----
+
+The ... after typename or the type gives us a pack.
+The ... after the argument unpacks the pack. {V...} in our example.
+sizeof...(Agument) gives us the number of types/values supplied in the template instantiation.
+
+Our value example instantiates to following:
+
+[source,C++]
+----
+#include <array>
+
+struct my_values{
+    static constexpr std::array<int, 3> value = {1,2,3};
+};
+
+
+----
+
+=== Template specialization
+
+In C++, we can specialize a template for a given set of arguments or all of them (full specialized).
+We do that by writing the specialized arguments in <> right after the name.
+In this example we make a special version for the type int.
+The compiler will always take the version that has the best specialization.
+So the more you specialize and the specialization matches, the better the match.
+Keep this in mind, because it is how we make branches in out meta programming.
+
+[source,C++]
+----
+template<typename T, auto VAL>
+struct my_struct {
+    using type = T;
+    static constexpr T value = VAL;
+    static constexpr bool special = false;
+};
+
+// special for int
+template<int VAL>
+struct my_struct<int, VAL> {
+    using type = int;
+    static constexpr int value = VAL;
+    static constexpr bool special = true;
+};
+
+//fully specialized
+template<>
+struct my_struct<int, 42> {
+    using type = int;
+    static constexpr int value = 42;
+    static constexpr bool full_specialized = true;
+};
+
+static_assert(my_struct<unsigned long, 5U>::value == 5U);
+static_assert(std::is_same_v<my_struct<unsigned long, 5U>::type, unsigned long>);
+static_assert(my_struct<unsigned long, 5U>::special == false);
+static_assert(my_struct<int, 5>::special == true);
+static_assert(my_struct<int, 42>::full_specialized == true);
+----
+
+=== Traits
+
+Now that we know how to specialize template, we can use that to extract more information from a type.
+We call such construct a trait.
+In the examples above we were already using a trait called is_same.
+
+[source,C++]
+----
+#include <type_traits>
+
+// we call this a trait
+// With this trait we obtain the value from a type
+template<typename>
+struct get_value;
+
+// some sugar to easily get a value.
+// Relies on the convention that a value is called value.
+// Another convention is to call it the same as the trait with _v
+template<typename T>
+constexpr auto get_value_v = get_value<T>::value;
+
+// A trait to get something else. Here it is a type
+template<typename>
+struct get_type;
+
+// some sugar to easily get the type.
+// Relies on the convention that the type is called type.
+// Another convention is to call it the same as the trait with _t
+template<typename T>
+using get_type_t = typename get_type<T>::type;
+
+
+// Our type that can be used wit our traits
+template<int VALUE, typename TYPE>
+struct my_type {};
+
+//create a specialization for my_type
+template<int VALUE, typename TYPE>
+struct get_value<my_type<VALUE, TYPE>>
+{
+    static constexpr int value = VALUE;
+};
+
+//create a specialization for my_type
+template<int VALUE, typename TYPE>
+struct get_type<my_type<VALUE, TYPE>>
+{
+    using type = TYPE;
+};
+
+
+// Another type that can be used wit our traits
+struct other_type {};
+
+//create a specialization for other_type (fully specailized)
+template<>
+struct get_type<other_type>
+{
+    using type = void;
+};
+
+//create a specialization for other_type (fully specailized)
+template<>
+struct get_value<other_type>
+{
+    static constexpr unsigned int value = 123;
+}; 
+
+
+// remindes of calling a function to get something back huh?
+static_assert(get_value_v<my_type<42, bool>> == 42);
+static_assert(std::is_same_v<get_type_t<my_type<42, bool>>, bool>);
+
+static_assert(get_value_v<other_type> == 123);
+static_assert(std::is_same_v<get_type_t<other_type>, void>);
+----
+
+There is a convention in the C++ community and libraries that type aliases used for traits are called "type",
+and values are called "value". The trait that obtains a type is underscored with _t, the value trait with _v.
+We can already see that in std::is_same<typename, typename>_v, which exposes a constexpr bool of the trait.
+
+
+== What are we doing with TMP
+In Template Meta Programming, we are using the type system of C++ as a functional programming language.
+With the introduction of constexpr if, we can also use structural programming in TMP.
+Now with that programming language in hand, which is touring compatible byt he way, we can let the compiler generate code for us.
+
+One important thing that is different from structural programming is that we do not have mutable objects (eg. a non const variable), but only immutables. This is in my opinion the biggest difference in functional programming compared to structural programming.
+If we want to change a value, we mast create a new object. We mostly do that by creating a recursion and put the changed value as a parameter.
+
+== A typelist as first example and basic building block
+
+With the tools we learned above, we can built our first own building block for more complex TMP stuff.
+Unfortunately a typelist is not yet in the C++ standard library, but you will use it a lot.
+Fortunately, it is very easy to make on. In fact, two lines of code.
+Variadic template arguments for the win!
+
+[source,C++]
+----
+template<typename... T>
+struct typelist {};
+----
+
+But why do we need such a construct?
+You can already do a lot with variadic template arguments, but putting them to a type, gives them the full power to a type.
+
+Lets define some operations (traits) on that list.
+
+[source,C++]
+----
+#include <type_traits>
+#include <cstddef>
+
+template<typename T>
+struct count;
+
+template<typename T>
+constexpr std::size_t count_v = count<T>::value;
+
+template<typename... T>
+struct typelist {};
+
+// we can use integral_constant to define triats that hols a value
+template<typename... T>
+struct count<typelist<T...>> : std::integral_constant<std::size_t, sizeof...(T)> {};
+
+// we can also do following, but integral_constant is more ideomatic and gives us additional things
+/*
+template<typename... T>
+struct count<typelist<T...>>
+{
+    std::size_t value = sizeof...(T);
+};
+*/
+
+template<typename T, typename... LIST>
+struct append;
+
+template<typename T, typename... LIST>
+using append_t = typename append<T, LIST...>::type;
+
+template<typename T, typename... ELEMENTS>
+struct append<T, typelist<ELEMENTS...>> {
+    using type = typelist<ELEMENTS..., T>;
+};
+
+template<typename T, typename... LIST>
+struct prepend;
+
+template<typename T, typename... LIST>
+using prepend_t = typename prepend<T, LIST...>::type;
+
+template<typename T, typename... ELEMENTS>
+struct prepend<T, typelist<ELEMENTS...>> {
+    using type = typelist<T, ELEMENTS...>;
+};
+
+template<typename, typename>
+struct concat;
+
+template<typename LIST1, typename LIST2>
+using concat_t = typename concat<LIST1, LIST2>::type;
+
+template<typename... LIST1, typename... LIST2>
+struct concat<typelist<LIST1...>, typelist<LIST2...>>
+{
+    using type = typelist<LIST1..., LIST2...>;
+};
+
+template<typename... LIST>
+struct remove_front;
+
+template<typename... LIST>
+using remove_front_t = typename remove_front<LIST...>::type;
+
+template<typename FIRST, typename... REST>
+struct remove_front<typelist<FIRST, REST...>>
+{
+    using type = typelist<REST...>;
+};
+
+
+template<std::size_t INDEX, std::size_t CURRENT_INDEX, typename LIST, typename CURRENT, typename ...REST>
+struct remove_helper;
+
+template<std::size_t INDEX, std::size_t CURRENT_INDEX, typename LIST, typename CURRENT, typename ...REST>
+struct remove_helper<INDEX, CURRENT_INDEX, LIST, typelist<CURRENT, REST...>>
+{
+    using type = typename remove_helper<INDEX, CURRENT_INDEX + 1, append_t<CURRENT, LIST>, typelist<REST...>>::type;
+};
+
+template<std::size_t INDEX, typename LIST, typename CURRENT, typename ...REST>
+struct remove_helper<INDEX, INDEX, LIST, typelist<CURRENT, REST...>>
+{
+    using type = concat_t<LIST, typelist<REST...>>;
+};
+
+template<std::size_t INDEX, typename LIST>
+struct remove_at
+{
+    static_assert(INDEX < count_v<LIST>);
+    using type = typename remove_helper<INDEX, 0, typelist<>, LIST>::type;
+};
+
+template<std::size_t INDEX, typename LIST>
+using remove_at_t = typename remove_at<INDEX, LIST>::type;
+
+template<std::size_t INDEX, std::size_t CURRENT_INDEX, typename LIST>
+struct at_helper;
+
+template<std::size_t INDEX, std::size_t CURRENT_INDEX, typename FIRST, typename... REST>
+struct at_helper<INDEX, CURRENT_INDEX, typelist<FIRST, REST...>>
+{
+    using type = typename at_helper<INDEX, CURRENT_INDEX + 1, typelist<REST...>>::type;
+};
+
+template<std::size_t INDEX, typename FIRST, typename... REST>
+struct at_helper<INDEX, INDEX, typelist<FIRST, REST...>>
+{
+    using type = FIRST;
+};
+
+
+template<std::size_t INDEX, typename LIST>
+struct at
+{
+    static_assert(INDEX < count_v<LIST>);
+    using type = typename at_helper<INDEX, 0, LIST>::type;
+};
+
+template<std::size_t INDEX, typename LIST>
+using at_t = typename at<INDEX, LIST>::type;
+
+
+using my_typelist = typelist<bool, int, void>;
+static_assert(count_v<my_typelist> == 3);
+
+static_assert(std::is_same_v<append_t<void, typelist<bool, int>>, my_typelist>);
+static_assert(std::is_same_v<prepend_t<bool, typelist<int, void>>, my_typelist>);
+
+static_assert(std::is_same_v<remove_front_t<my_typelist>, typelist<int, void>>);
+
+static_assert(std::is_same_v<concat_t<my_typelist, typelist<char, unsigned int>>, typelist<bool, int, void, char, unsigned int>>);
+
+static_assert(std::is_same_v<at_t<0, my_typelist>, bool>);
+static_assert(std::is_same_v<at_t<1, my_typelist>, int>);
+static_assert(std::is_same_v<at_t<2, my_typelist>, void>);
+
+static_assert(std::is_same_v<remove_at_t<1, my_typelist>, typelist<bool, void>>);
+----
