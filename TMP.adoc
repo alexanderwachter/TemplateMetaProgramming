@@ -53,8 +53,8 @@ static_assert(!std::is_same_v<my_struct, const my_struct>);
 ----
 
 == C++ templates
-With templates, we can make a functions or a classes generic.
-A template is parametrized by it template parameters.
+With templates, we can make a function or a classes generic.
+A template is parametrized by template parameters.
 Template parameters can be one of the following
 
 * A generic type (which can be instantiated with `int`, `my_struct`, ...)
@@ -99,7 +99,7 @@ static_assert(my_struct<unsigned long, 5U>::value == 5U);
 static_assert(std::is_same_v<my_struct<unsigned long, 5U>::type, unsigned long>);
 ----
 
-and type aliases or constants
+and type aliases or constant expressions
 
 [source,C++]
 ----
@@ -126,7 +126,7 @@ You can supply any number of arguments by using following syntax:
 template<typename... T>
 struct my_type{};
 
-template<typename T, int... V>
+template<typename T, T... V>
 struct my_values{
     static constexpr std::array<T, sizeof...(V)> value = {V...,};
 };
