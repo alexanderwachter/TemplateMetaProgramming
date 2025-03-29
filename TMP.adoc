@@ -275,8 +275,82 @@ There is a convention in the C++ community and libraries that type aliases used 
 and values are called "value". The trait that obtains a type is underscored with _t, the value trait with _v.
 We can already see that in std::is_same<typename, typename>_v, which exposes a constexpr bool of the trait.
 
+== C++20 Concepts int TMP
+
+In C++20, we got concepts.
+Concepts can be used to limit the types passed as a template argument to a set of specific types, or a dedicated type.
+The concepts library contains predefined concepts like std::integral
+
+It is also a nice way to tell the user what you expect as a parameter to a template.
+We can also use it to specialize a template specialization
+
+[source,C++]
+----
+#include <type_traits>
+#include <concepts>
+
+// A type that holds any number of types
+template<typename... T>
+struct typelist {};
+
+// A trait that is the true_type if the template parameter is a typelist, else false_type
+template<typename T>
+struct is_typelist : std::false_type {};
+
+template<typename... ELEMENTs>
+struct is_typelist<typelist<ELEMENTs...>> : std::true_type {};
+
+template<typename T>
+constexpr bool is_typelist_v = is_typelist<T>::value;
+
+namespace concepts
+{
+template<typename T>
+concept typelist = is_typelist_v<T>;
+};
+
+// Trait to prepend an element at the beginning of the typelist
+template<typename T, concepts::typelist LIST>
+struct prepend;
+
+template<typename T, concepts::typelist LIST>
+using prepend_t = typename prepend<T, LIST>::type;
+
+template<typename T, typename... ELEMENTs>
+struct prepend<T, typelist<ELEMENTs...>> {
+    using type = typelist<T, ELEMENTs...>;
+};
+
+template<concepts::typelist LIST>
+struct only_integrals;
+
+template<concepts::typelist LIST>
+using only_integrals_t = typename only_integrals<LIST>::type;
+
+template<>
+struct only_integrals<typelist<>>
+{
+    using type = typelist<>;
+};
+
+template<typename FIRST, typename... RESTs>
+struct only_integrals<typelist<FIRST, RESTs...>>
+{
+    using type = only_integrals_t<typelist<RESTs...>>;
+};
+
+template<std::integral FIRST, typename... RESTs>
+struct only_integrals<typelist<FIRST, RESTs...>>
+{
+    using type = prepend_t<FIRST, only_integrals_t<typelist<RESTs...>>>;
+};
+
+static_assert(std::is_same_v<only_integrals_t<typelist<int, char, float, bool, void>>, typelist<int, char, bool>>);
+
+----
 
 == What are we doing with TMP
+
 In Template Meta Programming, we are using the type system of C++ as a functional programming language.
 With the introduction of constexpr if, we can also use structural programming in TMP.
 Now with that programming language in hand, which is touring compatible byt he way, we can let the compiler generate code for us.
@@ -301,146 +375,4 @@ But why do we need such a construct?
 You can already do a lot with variadic template arguments, but putting them to a type, gives them the full power to a type.
 
 Lets define some operations (traits) on that list.
-
-[source,C++]
-----
-#include <type_traits>
-#include <cstddef>
-
-template<typename T>
-struct count;
-
-template<typename T>
-constexpr std::size_t count_v = count<T>::value;
-
-template<typename... T>
-struct typelist {};
-
-// we can use integral_constant to define triats that hols a value
-template<typename... T>
-struct count<typelist<T...>> : std::integral_constant<std::size_t, sizeof...(T)> {};
-
-// we can also do following, but integral_constant is more ideomatic and gives us additional things
-/*
-template<typename... T>
-struct count<typelist<T...>>
-{
-    std::size_t value = sizeof...(T);
-};
-*/
-
-template<typename T, typename... LIST>
-struct append;
-
-template<typename T, typename... LIST>
-using append_t = typename append<T, LIST...>::type;
-
-template<typename T, typename... ELEMENTS>
-struct append<T, typelist<ELEMENTS...>> {
-    using type = typelist<ELEMENTS..., T>;
-};
-
-template<typename T, typename... LIST>
-struct prepend;
-
-template<typename T, typename... LIST>
-using prepend_t = typename prepend<T, LIST...>::type;
-
-template<typename T, typename... ELEMENTS>
-struct prepend<T, typelist<ELEMENTS...>> {
-    using type = typelist<T, ELEMENTS...>;
-};
-
-template<typename, typename>
-struct concat;
-
-template<typename LIST1, typename LIST2>
-using concat_t = typename concat<LIST1, LIST2>::type;
-
-template<typename... LIST1, typename... LIST2>
-struct concat<typelist<LIST1...>, typelist<LIST2...>>
-{
-    using type = typelist<LIST1..., LIST2...>;
-};
-
-template<typename... LIST>
-struct remove_front;
-
-template<typename... LIST>
-using remove_front_t = typename remove_front<LIST...>::type;
-
-template<typename FIRST, typename... REST>
-struct remove_front<typelist<FIRST, REST...>>
-{
-    using type = typelist<REST...>;
-};
-
-
-template<std::size_t INDEX, std::size_t CURRENT_INDEX, typename LIST, typename CURRENT, typename ...REST>
-struct remove_helper;
-
-template<std::size_t INDEX, std::size_t CURRENT_INDEX, typename LIST, typename CURRENT, typename ...REST>
-struct remove_helper<INDEX, CURRENT_INDEX, LIST, typelist<CURRENT, REST...>>
-{
-    using type = typename remove_helper<INDEX, CURRENT_INDEX + 1, append_t<CURRENT, LIST>, typelist<REST...>>::type;
-};
-
-template<std::size_t INDEX, typename LIST, typename CURRENT, typename ...REST>
-struct remove_helper<INDEX, INDEX, LIST, typelist<CURRENT, REST...>>
-{
-    using type = concat_t<LIST, typelist<REST...>>;
-};
-
-template<std::size_t INDEX, typename LIST>
-struct remove_at
-{
-    static_assert(INDEX < count_v<LIST>);
-    using type = typename remove_helper<INDEX, 0, typelist<>, LIST>::type;
-};
-
-template<std::size_t INDEX, typename LIST>
-using remove_at_t = typename remove_at<INDEX, LIST>::type;
-
-template<std::size_t INDEX, std::size_t CURRENT_INDEX, typename LIST>
-struct at_helper;
-
-template<std::size_t INDEX, std::size_t CURRENT_INDEX, typename FIRST, typename... REST>
-struct at_helper<INDEX, CURRENT_INDEX, typelist<FIRST, REST...>>
-{
-    using type = typename at_helper<INDEX, CURRENT_INDEX + 1, typelist<REST...>>::type;
-};
-
-template<std::size_t INDEX, typename FIRST, typename... REST>
-struct at_helper<INDEX, INDEX, typelist<FIRST, REST...>>
-{
-    using type = FIRST;
-};
-
-
-template<std::size_t INDEX, typename LIST>
-struct at
-{
-    static_assert(INDEX < count_v<LIST>);
-    using type = typename at_helper<INDEX, 0, LIST>::type;
-};
-
-template<std::size_t INDEX, typename LIST>
-using at_t = typename at<INDEX, LIST>::type;
-
-
-using my_typelist = typelist<bool, int, void>;
-static_assert(count_v<my_typelist> == 3);
-
-static_assert(std::is_same_v<append_t<void, typelist<bool, int>>, my_typelist>);
-static_assert(std::is_same_v<prepend_t<bool, typelist<int, void>>, my_typelist>);
-
-static_assert(std::is_same_v<remove_front_t<my_typelist>, typelist<int, void>>);
-
-static_assert(std::is_same_v<concat_t<my_typelist, typelist<char, unsigned int>>, typelist<bool, int, void, char, unsigned int>>);
-
-static_assert(std::is_same_v<at_t<0, my_typelist>, bool>);
-static_assert(std::is_same_v<at_t<1, my_typelist>, int>);
-static_assert(std::is_same_v<at_t<2, my_typelist>, void>);
-
-static_assert(std::is_same_v<remove_at_t<1, my_typelist>, typelist<bool, void>>);
-----
+See include/Typelist.hpp for the implementation of a typelist.
