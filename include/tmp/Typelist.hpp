@@ -81,6 +81,22 @@ struct concat<typelist<ELEMENT1s...>, typelist<ELEMENT2s...>>
     using type = typelist<ELEMENT1s..., ELEMENT2s...>;
 };
 
+// Trait to get a list in reversed order
+template<concepts::typelist LIST>
+struct reverse;
+
+template<concepts::typelist LIST>
+using reverse_t = typename reverse<LIST>::type;
+
+template<>
+struct reverse<typelist<>>: std::type_identity<typelist<>> {};
+
+template<typename FIRST, typename... RESTs>
+struct reverse<typelist<FIRST, RESTs...>>
+{
+    using type = append_t<FIRST, reverse_t<typelist<RESTs...>>>;
+};
+
 template<concepts::typelist LIST>
 struct remove_front;
 
@@ -88,10 +104,7 @@ template<concepts::typelist LIST>
 using remove_front_t = typename remove_front<LIST>::type;
 
 template<>
-struct remove_front<typelist<>>
-{
-    using type = typelist<>;
-};
+struct remove_front<typelist<>> : std::type_identity<typelist<>> {};
 
 template<typename FIRST, typename... RESTs>
 struct remove_front<typelist<FIRST, RESTs...>>
@@ -106,16 +119,10 @@ template<concepts::typelist LIST>
 using remove_back_t = typename remove_back<LIST>::type;
 
 template<>
-struct remove_back<typelist<>>
-{
-    using type = typelist<>;
-};
+struct remove_back<typelist<>> : std::type_identity<typelist<>> {};
 
 template<typename LAST>
-struct remove_back<typelist<LAST>>
-{
-    using type = typelist<>;
-};
+struct remove_back<typelist<LAST>> : std::type_identity<typelist<>> {};
 
 template<typename FIRST, typename... RESTs>
 struct remove_back<typelist<FIRST, RESTs...>>
