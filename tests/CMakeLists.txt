@@ -8,6 +8,7 @@ project(TemplateMetaProgrammingTests VERSION 0.0.1
 #find_package(tmp CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME}
+    ${CMAKE_CURRENT_LIST_DIR}/algorithms.cpp
     ${CMAKE_CURRENT_LIST_DIR}/typelist.cpp
     ${CMAKE_CURRENT_LIST_DIR}/main.cpp
 )
