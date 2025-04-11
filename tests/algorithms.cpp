@@ -45,6 +45,15 @@ namespace NoneOf {
     static_assert(none_of_v<empty, std::is_integral> == true);
 }
 
+namespace HasA {
+    static_assert(has_a_v<typelist<float, void, double>,char> == false);
+    static_assert(has_a_v<typelist<int, void, float>, int> == true);
+    static_assert(has_a_v<typelist<int, void, float>, void> == true);
+    static_assert(has_a_v<typelist<int, void, float>, float> == true);
+    static_assert(has_a_v<empty, void> == false);
+}
+
+
 namespace FindIf {
     static_assert(std::is_same_v<find_if_t<typelist<float, void, double>, std::is_integral>, nil_type>);
     static_assert(std::is_same_v<find_if_t<typelist<float, int, double>, std::is_integral>, int>);
@@ -58,4 +67,17 @@ namespace Filter {
     static_assert(std::is_same_v<filter_t<typelist<float, void, double>, std::is_integral>, empty>);
     static_assert(std::is_same_v<filter_t<typelist<bool, void, char>, std::is_integral>, typelist<bool, char>>);
     static_assert(std::is_same_v<filter_t<typelist<bool, void, char, void>, std::is_integral>, typelist<bool, char>>);
+}
+
+namespace Filter {
+    static_assert(count_if_v<typelist<>, std::is_integral> == 0U);
+    static_assert(count_if_v<typelist<float, void, double>, std::is_integral> == 0U);
+    static_assert(count_if_v<typelist<bool, void, char>, std::is_integral> == 2U);
+    static_assert(count_if_v<typelist<void, int, void>, std::is_integral> == 1U);
+}
+
+
+namespace Transform {
+    static_assert(std::is_same_v<transform_t<typelist<>, std::make_unsigned>, typelist<>>);
+    static_assert(std::is_same_v<transform_t<typelist<char, int, long>, std::make_unsigned>, typelist<unsigned char, unsigned int, unsigned long>>);
 }
