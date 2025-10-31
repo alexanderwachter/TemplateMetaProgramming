@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Alexander Wachter
+//
+// SPDX-License-Identifier: CC-BY-4.0
+
 = Template Meta Programming
 
 == Disclaimer
@@ -275,7 +279,7 @@ There is a convention in the C++ community and libraries that type aliases used 
 and values are called "value". The trait that obtains a type is underscored with `_t`, the value trait with `_v`.
 We can already see that in `std::is_same<typename, typename>_v`, which exposes a `constexpr bool` of the trait.
 
-== C++20 Concepts int TMP
+== C++20 Concepts in TMP
 
 In C++20, we got concepts.
 Concepts can be used to limit the types passed as a template argument to a set of specific types, or a dedicated type.
