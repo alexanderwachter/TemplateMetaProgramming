@@ -24,7 +24,7 @@ template<typename T>
 struct count;
 
 template<typename T>
-constexpr std::size_t count_v = count<T>::value;
+inline constexpr std::size_t count_v = count<T>::value;
 
 // A type that holds any number of types
 template<typename... T>
@@ -38,7 +38,7 @@ template<typename... ELEMENTs>
 struct is_typelist<typelist<ELEMENTs...>> : std::true_type {};
 
 template<typename T>
-constexpr bool is_typelist_v = is_typelist<T>::value;
+inline constexpr bool is_typelist_v = is_typelist<T>::value;
 
 namespace concepts
 {
