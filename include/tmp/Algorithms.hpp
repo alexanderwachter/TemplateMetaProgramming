@@ -84,6 +84,48 @@ struct filter<typelist<FIRST, RESTs...>, PREDICATE>
     using type = std::conditional_t<PREDICATE<FIRST>::value, prepend_t<FIRST, filter_t<typelist<RESTs...>, PREDICATE>>, filter_t<typelist<RESTs...>, PREDICATE>>;
 };
 
+
+// type is a typelist where the elements that satisfies the predicate are removed
+template<concepts::typelist LIST,  template<typename> typename PREDICATE>
+struct remove_if;
+
+template<concepts::typelist LIST, template<typename> typename PREDICATE>
+using remove_if_t = typename remove_if<LIST, PREDICATE>::type;
+
+template<template<typename> typename PREDICATE>
+struct remove_if<typelist<>, PREDICATE> : std::type_identity<typelist<>> {};
+
+template<template<typename> typename PREDICATE, typename FIRST, typename... RESTs>
+struct remove_if<typelist<FIRST, RESTs...>, PREDICATE>
+{
+    using type = std::conditional_t<PREDICATE<FIRST>::value, remove_if_t<typelist<RESTs...>, PREDICATE>, prepend_t<FIRST, remove_if_t<typelist<RESTs...>, PREDICATE>>>;
+};
+
+
+// removes the firs occurrences of a type if there exist the same type later in the list
+template<concepts::typelist LIST>
+struct unique_keep_last;
+
+template<concepts::typelist LIST>
+using unique_keep_last_t = typename unique_keep_last<LIST>::type;
+
+template<>
+struct unique_keep_last<typelist<>> : std::type_identity<typelist<>> {};
+
+template<typename FIRST, typename... RESTs>
+struct unique_keep_last<typelist<FIRST, RESTs...>>
+{
+    using type = std::conditional_t<has_a_v<typelist<RESTs...>, FIRST>, unique_keep_last_t<typelist<RESTs...>>, prepend_t<FIRST, unique_keep_last_t<typelist<RESTs...>>>>;
+};
+
+// keeps the first occurrence of a type in the list and removes all further
+template<concepts::typelist LIST>
+struct unique : reverse<unique_keep_last_t<reverse_t<LIST>>> {};
+
+template<concepts::typelist LIST>
+using unique_t = typename unique<LIST>::type;
+
+
 // count the number of elements that satisfies the predicate
 template<concepts::typelist LIST,  template<typename> typename PREDICATE>
 struct count_if;

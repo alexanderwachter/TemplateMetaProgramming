@@ -69,7 +69,14 @@ namespace Filter {
     static_assert(std::is_same_v<filter_t<typelist<bool, void, char, void>, std::is_integral>, typelist<bool, char>>);
 }
 
-namespace Filter {
+namespace RemoveIf {
+    static_assert(std::is_same_v<remove_if_t<typelist<>, std::is_integral>, empty>);
+    static_assert(std::is_same_v<remove_if_t<typelist<float, void, double>, std::is_integral>, typelist<float, void, double>>);
+    static_assert(std::is_same_v<remove_if_t<typelist<bool, void, char>, std::is_integral>, typelist<void>>);
+    static_assert(std::is_same_v<remove_if_t<typelist<bool, void, char, void>, std::is_integral>, typelist<void, void>>);
+}
+
+namespace CountIf {
     static_assert(count_if_v<typelist<>, std::is_integral> == 0U);
     static_assert(count_if_v<typelist<float, void, double>, std::is_integral> == 0U);
     static_assert(count_if_v<typelist<bool, void, char>, std::is_integral> == 2U);
@@ -80,4 +87,10 @@ namespace Filter {
 namespace Transform {
     static_assert(std::is_same_v<transform_t<typelist<>, std::make_unsigned>, typelist<>>);
     static_assert(std::is_same_v<transform_t<typelist<char, int, long>, std::make_unsigned>, typelist<unsigned char, unsigned int, unsigned long>>);
+}
+
+namespace Unique {
+    static_assert(std::is_same_v<unique_t<typelist<>>, typelist<>>);
+    static_assert(std::is_same_v<unique_t<typelist<bool, bool>>, typelist<bool>>);
+    static_assert(std::is_same_v<unique_t<typelist<test1, test2, test1, test3, test2, test4>>, typelist<test1, test2, test3, test4>>);
 }
