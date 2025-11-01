@@ -74,6 +74,64 @@ struct find_if<typelist<FIRST, RESTs...>, PREDICATE>
     using type = std::conditional_t<PREDICATE<FIRST>::value, FIRST, find_if_t<typelist<RESTs...>, PREDICATE>>;
 };
 
+namespace internal
+{
+
+template<template<typename, typename> typename COMPARE, concepts::typelist LIST>
+struct min_max;
+
+template<template<typename, typename> typename COMPARE, concepts::typelist LIST>
+using min_max_t = typename min_max<COMPARE, LIST>::type;
+
+
+template<template<typename, typename> typename COMPARE, typename FIRST>
+struct min_max<COMPARE, typelist<FIRST>>
+{
+    using type = FIRST;
+};
+
+template<template<typename, typename> typename COMPARE, typename FIRST, typename SECOND, typename... RESTs>
+struct min_max<COMPARE, typelist<FIRST, SECOND, RESTs...>>
+{
+    using type = std::conditional_t<COMPARE<FIRST, SECOND>::value, min_max_t<COMPARE, typelist<FIRST, RESTs...>>, min_max_t<COMPARE, typelist<SECOND, RESTs...>>>;
+};
+
+template<typename T1, typename T2>
+struct gt_value
+{
+    static constexpr bool value = T1::value > T2::value;
+};
+
+template<typename T1, typename T2>
+struct lt_value 
+{
+    static constexpr bool value = T1::value < T2::value;
+};
+
+} // namespace internal
+
+// type is the element that is satisfies compare over all other
+template<concepts::typelist LIST,  template<typename, typename> typename COMPARE = internal::lt_value>
+struct min
+{
+    using type = internal::min_max_t<COMPARE, LIST>;
+};
+
+template<concepts::typelist LIST,  template<typename, typename> typename COMPARE = internal::lt_value>
+using min_t = typename min<LIST, COMPARE>::type;
+
+
+// type is the element that is satisfies compare over all other
+template<concepts::typelist LIST,  template<typename, typename> typename COMPARE = internal::gt_value>
+struct max
+{
+    using type = internal::min_max_t<COMPARE, LIST>;
+};
+
+template<concepts::typelist LIST,  template<typename, typename> typename COMPARE = internal::gt_value>
+using max_t = typename max<LIST, COMPARE>::type;
+
+
 // type is a typelist with the elements of the list that satisfies the predicate
 template<concepts::typelist LIST,  template<typename> typename PREDICATE>
 struct filter;

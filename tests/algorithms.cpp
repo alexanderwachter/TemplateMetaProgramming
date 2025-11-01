@@ -68,6 +68,18 @@ namespace FindIf {
     static_assert(std::is_same_v<find_if_t<typelist<void, char, int>, std::is_integral>, char>);
 }
 
+namespace MinMax {
+    static_assert(min_t<typelist<std::integral_constant<int, -1>>>::value == -1);
+    static_assert(min_t<typelist<std::integral_constant<int, 0>, std::integral_constant<int, 1>, std::integral_constant<int, 2>>>::value == 0);
+    static_assert(min_t<typelist<std::integral_constant<int, 0>, std::integral_constant<int, 1>, std::integral_constant<int, -1>>>::value == -1);
+    static_assert(min_t<typelist<std::integral_constant<int, 0>, std::integral_constant<int, -1>, std::integral_constant<int, 2>>>::value == -1);
+
+    static_assert(max_t<typelist<std::integral_constant<int, 1>>>::value == 1);
+    static_assert(max_t<typelist<std::integral_constant<int, 0>, std::integral_constant<int, 1>, std::integral_constant<int, 2>>>::value == 2);
+    static_assert(max_t<typelist<std::integral_constant<int, 3>, std::integral_constant<int, 1>, std::integral_constant<int, 2>>>::value == 3);
+    static_assert(max_t<typelist<std::integral_constant<int, 0>, std::integral_constant<int, -1>, std::integral_constant<int, 2>>>::value == 2);
+}
+
 namespace Filter {
     static_assert(std::is_same_v<filter_t<typelist<>, std::is_integral>, empty>);
     static_assert(std::is_same_v<filter_t<typelist<float, void, double>, std::is_integral>, empty>);
