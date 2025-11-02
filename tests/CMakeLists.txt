@@ -13,7 +13,9 @@ project(TemplateMetaProgrammingTests VERSION 0.0.1
 
 add_executable(${PROJECT_NAME}
     ${CMAKE_CURRENT_LIST_DIR}/algorithms.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/registers.cpp
     ${CMAKE_CURRENT_LIST_DIR}/typelist.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/utils.cpp
     ${CMAKE_CURRENT_LIST_DIR}/main.cpp
 )
 
