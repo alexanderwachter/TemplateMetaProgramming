@@ -46,6 +46,9 @@ template<typename T>
 concept typelist = is_typelist_v<T>;
 };
 
+// A type that is the result if an algorithm has no result
+struct nil_type {};
+
 // Specialization of count for the typelist. Counts the number of elements in the typelist
 template<typename... T>
 struct count<typelist<T...>> : std::integral_constant<std::size_t, sizeof...(T)> {};

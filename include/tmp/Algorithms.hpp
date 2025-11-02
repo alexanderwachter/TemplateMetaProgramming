@@ -11,9 +11,6 @@
 
 namespace tmp {
 
-// A type that is the result if an algorithm has no result
-struct nil_type {};
-
 // is the true type if for all of the elements the predicate has a value of true
 template<concepts::typelist LIST,  template<typename> typename PREDICATE>
 struct all_of;
@@ -215,5 +212,88 @@ struct transform<typelist<ELEMENTs...>, OPERATION>
 {
     using type = typelist<typename OPERATION<ELEMENTs>::type...>;
 };
+
+
+namespace internal {
+
+template<typename T, concepts::typelist LIST, template<typename> typename PREDICATE, concepts::typelist FRONT = typelist<>>
+struct insert_if;
+
+template<typename T, concepts::typelist LIST, template<typename> typename PREDICATE,concepts::typelist FRONT = typelist<>>
+using insert_if_t = typename insert_if<T, LIST, PREDICATE, FRONT>::type;
+
+template<typename T, template<typename> typename PREDICATE, concepts::typelist FRONT>
+struct insert_if<T, typelist<>, PREDICATE, FRONT>
+{
+    using type = nil_type;
+};
+
+template<typename T, template<typename> typename PREDICATE, concepts::typelist FRONT, typename ELEMENT, typename... RESTs>
+struct insert_if<T, typelist<ELEMENT, RESTs...>, PREDICATE, FRONT>
+{
+    using type = std::conditional_t<PREDICATE<ELEMENT>::value, concat_t<FRONT, typelist<T, ELEMENT, RESTs...>>, insert_if_t<T, typelist<RESTs...>, PREDICATE, append_t<ELEMENT, FRONT>>>;
+};
+
+
+template<typename T, concepts::typelist LIST, template<typename> typename PREDICATE, concepts::typelist FRONT = typelist<>>
+struct insert_if_else_append
+{
+    using inserted = insert_if_t<T, LIST, PREDICATE, FRONT>;
+    using type = std::conditional_t<std::is_same_v<inserted, nil_type>, append_t<T, LIST>, inserted>;
+};
+
+template<typename T, concepts::typelist LIST, template<typename> typename PREDICATE,concepts::typelist FRONT = typelist<>>
+using insert_if_else_append_t = typename insert_if_else_append<T, LIST, PREDICATE, FRONT>::type;
+
+template<concepts::typelist LIST, template<typename, typename> typename COMPARE>
+struct sort;
+
+template<concepts::typelist LIST, template<typename, typename> typename COMPARE>
+using sort_t = typename sort<LIST, COMPARE>::type;
+
+template<template<typename, typename> typename COMPARE>
+struct sort<typelist<>, COMPARE>
+{
+    using type = typelist<>;
+};
+
+template<template<typename, typename> typename COMPARE, typename FIRST, typename... RESTs>
+struct sort<typelist<FIRST, RESTs...>, COMPARE>
+{
+    template<typename T>
+    struct comp : COMPARE<FIRST, T> {};
+    using type = insert_if_else_append_t<FIRST, sort_t<typelist<RESTs...>, COMPARE>, comp>;
+};
+
+} // namespace internal
+
+template<concepts::typelist LIST, template<typename, typename> typename COMPARE>
+struct sort
+{
+    using type = internal::sort_t<LIST, COMPARE>;
+};
+
+template<concepts::typelist LIST, template<typename, typename> typename COMPARE>
+using sort_t = typename sort<LIST, COMPARE>::type;
+
+template<typename T1, typename T2>
+struct gt_size
+{
+    using type = bool;
+    static constexpr type value = sizeof(T1) > sizeof(T2);
+};
+
+template<typename T1, typename T2>
+inline constexpr bool gt_size_v = gt_size<T1, T2>::value;
+
+template<typename T1, typename T2>
+struct lt_size
+{
+    using type = bool;
+    static constexpr type value = sizeof(T1) < sizeof(T2);
+};
+
+template<typename T1, typename T2>
+inline constexpr bool lt_size_v = lt_size<T1, T2>::value;
 
 } // namespace tmp

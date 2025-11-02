@@ -6,6 +6,7 @@
 
 #include <tmp/Algorithms.hpp>
 #include <type_traits>
+#include <cstdint>
 
 using namespace tmp;
 
@@ -112,3 +113,31 @@ namespace Unique {
     static_assert(std::is_same_v<unique_t<typelist<bool, bool>>, typelist<bool>>);
     static_assert(std::is_same_v<unique_t<typelist<test1, test2, test1, test3, test2, test4>>, typelist<test1, test2, test3, test4>>);
 }
+
+namespace InsertIf {
+    template<typename T>
+    struct is_test2 : std::is_same<T, test2> {};
+
+    static_assert(std::is_same_v<internal::insert_if_t<char, empty, is_test2>, nil_type>);
+    static_assert(std::is_same_v<internal::insert_if_else_append_t<char, empty, is_test2>, typelist<char>>);
+    static_assert(std::is_same_v<internal::insert_if_t<test4, secondTwo, is_test2>, nil_type>);
+    static_assert(std::is_same_v<internal::insert_if_t<test4, firstTwo, is_test2>, typelist<test1, test4, test2>>);
+    static_assert(std::is_same_v<internal::insert_if_t<test4, typelist<test1, test2, test3>, is_test2>, typelist<test1, test4, test2, test3>>);
+} // namespace InsertIf
+
+namespace Sort {
+    static_assert(gt_size_v<int, char> == true);
+    static_assert(gt_size_v<char, int> == false);
+    static_assert(lt_size_v<int, char> == false);
+    static_assert(lt_size_v<char, int> == true);
+    static_assert(std::is_same_v<sort_t<empty, gt_size>, empty>);
+    static_assert(std::is_same_v<sort_t<typelist<char>, gt_size>, typelist<char>>);
+
+    using list_unsorted = typelist<std::uint8_t, std::uint32_t, std::uint64_t, std::uint16_t>;
+    using list_asc = typelist<std::uint8_t, std::uint16_t, std::uint32_t, std::uint64_t>;
+    using list_desc = typelist<std::uint64_t, std::uint32_t, std::uint16_t, std::uint8_t>;
+    static_assert(std::is_same_v<sort_t<list_unsorted, gt_size>, list_desc>);
+    static_assert(std::is_same_v<sort_t<list_asc, gt_size>, list_desc>);
+    static_assert(std::is_same_v<sort_t<list_desc, gt_size>, list_desc>);
+    static_assert(std::is_same_v<sort_t<list_unsorted, lt_size>, list_asc>);
+} // namespace Sort
