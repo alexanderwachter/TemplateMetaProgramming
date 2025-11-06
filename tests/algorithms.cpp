@@ -60,6 +60,15 @@ namespace HasA {
     static_assert(has_a_v<empty, void> == false);
 }
 
+namespace Sum {
+    using val1 = std::integral_constant<char, 1>;
+    using val2 = std::integral_constant<int, 2>;
+    using val3 = std::integral_constant<int, 3>;
+
+    static_assert(sum_v<empty> == 0);
+    static_assert(sum_v<typelist<val1, val2, val3>> == 6);
+    static_assert(std::is_same_v<typename sum<empty>::value_type, int>);
+}
 
 namespace FindIf {
     static_assert(std::is_same_v<find_if_t<typelist<float, void, double>, std::is_integral>, nil_type>);

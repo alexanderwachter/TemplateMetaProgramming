@@ -52,6 +52,19 @@ inline constexpr bool has_a_v = has_a<LIST, T>::value;
 template<typename T, typename... ELEMENTs>
 struct has_a<typelist<ELEMENTs...>, T> : std::disjunction<std::is_same<T, ELEMENTs>...> {};
 
+// Sum of all values of the types in the list
+template<concepts::typelist LIST>
+struct sum;
+
+template<concepts::typelist LIST>
+inline constexpr auto sum_v = sum<LIST>::value;
+
+template<>
+struct sum<typelist<>> : std::integral_constant<int, 0> {};
+
+template<typename... ELEMENTs>
+struct sum<typelist<ELEMENTs...>> : std::integral_constant<std::common_type_t<decltype(ELEMENTs::value)...>, (ELEMENTs::value + ...)> {};
+
 // type is the element of the typelist where the predicate matches first. If no element matches, type is the nil_type
 template<concepts::typelist LIST,  template<typename> typename PREDICATE>
 struct find_if;
