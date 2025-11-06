@@ -93,4 +93,9 @@ namespace Reverse {
     static_assert(std::is_same_v<reverse_t<first>, first>);
     static_assert(std::is_same_v<reverse_t<firstFour>, typelist<test4, test3, test2, test1>>);
     
-} // namespace TestCount
+} // namespace Reverse
+
+namespace CommonType {
+    static_assert(std::is_same_v<common_type_t<typelist<std::integral_constant<bool, false>, std::integral_constant<int, 0>, std::integral_constant<char, 0>>>, int>);
+    static_assert(std::is_same_v<common_value_type_t<typelist<std::integral_constant<bool, false>, std::integral_constant<int, 0>, std::integral_constant<char, 0>>>, int>);
+} //namespace CommonType

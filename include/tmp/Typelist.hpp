@@ -232,4 +232,29 @@ struct at
 template<std::size_t INDEX, concepts::typelist LIST>
 using at_t = typename at<INDEX, LIST>::type;
 
+
+template<concepts::typelist LIST>
+struct common_type;
+
+template<concepts::typelist LIST>
+using common_type_t = typename common_type<LIST>::type;
+
+template<typename... ELEMENTs>
+struct common_type<typelist<ELEMENTs...>>
+{
+    using type = std::common_type_t<typename ELEMENTs::type...>;
+};
+
+template<concepts::typelist LIST>
+struct common_value_type;
+
+template<concepts::typelist LIST>
+using common_value_type_t = typename common_value_type<LIST>::type;
+
+template<typename... ELEMENTs>
+struct common_value_type<typelist<ELEMENTs...>>
+{
+    using type = std::common_type_t<decltype(ELEMENTs::value)...>;
+};
+
 } // namespace tmp
