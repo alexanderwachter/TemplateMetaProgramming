@@ -257,4 +257,28 @@ struct common_value_type<typelist<ELEMENTs...>>
     using type = std::common_type_t<decltype(ELEMENTs::value)...>;
 };
 
+template<typename>
+struct linearize;
+
+template<typename T>
+using linearize_t = typename linearize<T>::type;
+
+template<>
+struct linearize<typelist<>>
+{
+    using type = typelist<>;
+};
+
+template<typename FIRST, typename... RESTs>
+struct linearize<typelist<FIRST, RESTs...>>
+{
+    using type = prepend_t<FIRST, linearize_t<typelist<RESTs...>>>;
+};
+
+template<concepts::typelist FIRST, typename... RESTs>
+struct linearize<typelist<FIRST, RESTs...>>
+{
+    using type = concat_t<linearize_t<FIRST>, linearize_t<typelist<RESTs...>>>;
+};
+
 } // namespace tmp

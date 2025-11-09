@@ -99,3 +99,11 @@ namespace CommonType {
     static_assert(std::is_same_v<common_type_t<typelist<std::integral_constant<bool, false>, std::integral_constant<int, 0>, std::integral_constant<char, 0>>>, int>);
     static_assert(std::is_same_v<common_value_type_t<typelist<std::integral_constant<bool, false>, std::integral_constant<int, 0>, std::integral_constant<char, 0>>>, int>);
 } //namespace CommonType
+
+namespace Linearize
+{
+    using inner_inner = typelist<test3, test4>;
+    using inner = typelist<test2, inner_inner>;
+    using outer = typelist<test1, inner>;
+    static_assert(std::is_same_v<linearize_t<outer>, all>);
+} // namespace linearize
