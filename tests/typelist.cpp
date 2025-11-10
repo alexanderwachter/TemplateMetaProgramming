@@ -75,7 +75,7 @@ namespace TestRemoveAt {
     static_assert(std::is_same_v<remove_at_t<2, firstFour>, typelist<test1, test2, test4>>);
 }
 
-namespace TestFrontBackAt {
+namespace TestFrontBackAtIndex {
     static_assert(std::is_same_v<front_t<first>, test1>);
     static_assert(std::is_same_v<front_t<all>, test1>);
 
@@ -85,6 +85,11 @@ namespace TestFrontBackAt {
     static_assert(std::is_same_v<at_t<0, first>, test1>);
     static_assert(std::is_same_v<at_t<1, firstTwo>, test2>);
     static_assert(std::is_same_v<at_t<2, firstFour>, test3>);
+
+    static_assert(index_of_v<test1, first> == 0);
+    static_assert(index_of_v<test1, all> == 0);
+    static_assert(index_of_v<test3, all> == 2);
+    static_assert(index_of_v<test4, all> == 3);
 } // namespace TestCount
 
 

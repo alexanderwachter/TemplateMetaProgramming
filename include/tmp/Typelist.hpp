@@ -232,6 +232,24 @@ struct at
 template<std::size_t INDEX, concepts::typelist LIST>
 using at_t = typename at<INDEX, LIST>::type;
 
+// get the index of the element in the list
+template<typename ELEMENT, concepts::typelist LIST>
+struct index_of;
+
+template<typename ELEMENT, concepts::typelist LIST>
+inline constexpr std::size_t index_of_v = index_of<ELEMENT, LIST>::value;
+
+template<typename ELEMENT>
+struct index_of<ELEMENT, typelist<>> {
+    static_assert(false, "type not found in list");
+};
+
+template<typename ELEMENT, typename... RESTs>
+struct index_of<ELEMENT, typelist<ELEMENT, RESTs...>> : std::integral_constant<std::size_t, 0U> {};
+
+template<typename ELEMENT, typename FIRST, typename... RESTs>
+struct index_of<ELEMENT, typelist<FIRST, RESTs...>> : std::integral_constant<std::size_t, index_of_v<ELEMENT, typelist<RESTs...>> + 1U> {};
+
 
 template<concepts::typelist LIST>
 struct common_type;
