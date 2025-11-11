@@ -70,7 +70,7 @@ namespace Value {
     static_assert(std::is_same_v<base_content_t<value2>, multireg>);
 } // namespace Value
 
-namespace ExtracRegisters
+namespace AddressList
 {
     using reg1 = reg<1U, 0, 8U, uint8_t>;
     using reg2 = reg<2U, 0, 8U, uint8_t>;
@@ -85,7 +85,7 @@ namespace ExtracRegisters
 
     using content_list = typelist<content1, content3, multireg, content2>;
 
-    using registers = extract_registers<content_list>;
+    using registers = address_array<content_list>;
     static constexpr std::array<datatype_t<reg1>, count_v<content_list>> addr_list = {{1, 2, 3, 4}};
     static_assert(std::equal(addr_list.begin(), addr_list.end(), registers::value.begin()));
     static_assert(std::is_same_v<std::decay_t<decltype(address_v<reg1>)>, std::decay_t<decltype(registers::value.front())>>);
@@ -98,13 +98,13 @@ namespace View {
     using content1 = content<reg1>;
     using content2 = content<reg2, 0, 4>;
     using content3 = content<reg2, 4, 2>;
-
-    using contents = typelist<content1, content2, content3>;
+    using multireg_content1 = multireg_content<typelist<content1, content3>>;
 
     constexpr std::uint8_t data[] = {0xaa,0x6f};
-    constexpr ContentView<contents> view(data);
+    constexpr ContentView<typelist<reg1, reg2>> view(data);
     static_assert(view.get<content1>() == 0xaa);
     static_assert(view.get<content2>() == 0xf);
     static_assert(view.get<content3>() == 2);
+    static_assert(view.get<multireg_content1>() == 0x2aa);
     
 } // namespace View

@@ -341,12 +341,27 @@ struct linearize_content<typelist<FIRST, RESTs...>>
 {
     using type = concat_t<base_content_t<FIRST>, linearize_content_t<typelist<RESTs...>>>;
 };
+
+template<concepts::typelist LIST>
+struct all_datatypes_are_same
+{
+    using data_type = datatype_t<front_t<LIST>>;
+
+    template<typename T> struct same_type : std::is_same<T, data_type> {};
+    static constexpr bool value = all_of_v<transform_t<LIST, datatype>, same_type>;
+};
+
+template<typename T>
+inline constexpr bool all_datatypes_are_same_v = all_datatypes_are_same<T>::value;
+
 } // namespace internal
 
+template<typename>
+struct address_array;
 
-template<concepts::any_content_list CONTENTS>
-struct extract_registers {
-    using addresses = address_list_t<std::conditional_t<any_of_v<CONTENTS, is_multireg_content>, internal::linearize_content_t<CONTENTS>, CONTENTS>>;
+template<concepts::reg_list REGISTERS>
+struct address_array<REGISTERS> {
+    using addresses = address_list_t<REGISTERS>;
 
     static constexpr std::size_t size = count_v<addresses>;
     using value_type = std::array<internal::address_datatype_t<addresses>, size>;
@@ -354,13 +369,17 @@ struct extract_registers {
     static constexpr value_type value = internal::list_values_to_array<addresses>::value;
 };
 
-template<concepts::content_list CONTENTS>
-struct ContentView {
-    using register_list = register_list_t<CONTENTS>;
-    using data_type = datatype_t<front_t<register_list>>;
-    template<typename T> struct same_type : std::is_same<T, data_type> {};
-    static_assert(all_of_v<transform_t<register_list, datatype>, same_type>, "registers must be of the same datatype");
-    static constexpr std::size_t size = count_v<register_list>;
+template<concepts::any_content_list CONTENTS>
+struct address_array<CONTENTS>
+    : address_array<register_list_t<std::conditional_t<any_of_v<CONTENTS, is_multireg_content>, internal::linearize_content_t<CONTENTS>, CONTENTS>>> {};
+
+
+template<concepts::reg_list REGISTERS>
+class ContentView {
+public:
+    static_assert(internal::all_datatypes_are_same_v<REGISTERS>, "registers must be of the same datatype");
+
+    static constexpr std::size_t size = count_v<REGISTERS>;
     using view_type = std::span<const std::uint8_t, size>;
 
     constexpr ContentView(view_type raw_data) noexcept : data(raw_data) {}
@@ -368,9 +387,49 @@ struct ContentView {
     template<concepts::content T>
     constexpr auto get() const noexcept -> datatype_t<T>
     {
-        constexpr std::size_t index = index_of_v<base_register_t<T>, register_list>;
+        constexpr std::size_t index = index_of_v<base_register_t<T>, REGISTERS>;
         return ((data[index] & mask_v<T>) >> offset_v<T>);
     }
+
+    template<concepts::multireg_content T>
+    constexpr auto get() const noexcept -> datatype_t<T>
+    {
+        return get_multireg_value<T>::get(data);
+    }
+
+private:
+
+    template<concepts::content T, concepts::content_list LIST>
+    struct value_shift;
+
+    template<concepts::content T>
+    struct value_shift<T, typelist<>> : std::integral_constant<unsigned int, 0> {};
+
+    template<concepts::content T, concepts::content... CONTENTs>
+    struct value_shift<T, typelist<T, CONTENTs...>> : std::integral_constant<unsigned int, 0> {};
+
+    template<concepts::content T, concepts::content FIRST, concepts::content... RESTs>
+    struct value_shift<T, typelist<FIRST, RESTs...>> : std::integral_constant<unsigned int, value_shift<T, typelist<RESTs...>>::value + width_v<FIRST>> {};
+
+    template<concepts::multireg_content REG>
+    struct get_multireg_value;
+
+    template<typename DATATYPE, typename... CONTENTs>
+    struct get_multireg_value<multireg_content<typelist<CONTENTs...>, DATATYPE>>
+    {
+        template<concepts::content T, concepts::content_list LIST>
+        static constexpr DATATYPE get(view_type data) noexcept
+        {
+            constexpr std::size_t index = index_of_v<base_register_t<T>, REGISTERS>;
+            constexpr auto shift = value_shift<T, LIST>::value;
+            return ((data[index] & mask_v<T>) >> offset_v<T>) << shift;
+        }
+
+        static constexpr DATATYPE get(view_type data) noexcept
+        {
+            return (get<CONTENTs, typelist<CONTENTs...>>(data) + ...);
+        }
+    };
 
     view_type data;
 };
