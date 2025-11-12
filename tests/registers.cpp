@@ -47,6 +47,7 @@ namespace MultiregContent {
     static_assert(is_multireg_content_v<multireg>);
     static_assert(!is_multireg_content_v<content<reg1>>);
     static_assert(width_v<multireg> == 16);
+    static_assert(mask_v<multireg> == 0xffff);
     static_assert(std::is_same_v<base_content_t<multireg>, typelist<content<reg1>, content<reg2>>>);
     static_assert(std::is_same_v<datatype_t<multireg>, std::uint16_t>);
     static_assert(std::is_same_v<base_register_t<multireg>, typelist<reg1,reg2>>);
@@ -99,6 +100,7 @@ namespace View {
     using content2 = content<reg2, 0, 4>;
     using content3 = content<reg2, 4, 2>;
     using multireg_content1 = multireg_content<typelist<content1, content3>>;
+    using multireg_content2 = multireg_content<typelist<content2, content1>>;
 
     constexpr std::uint8_t data[] = {0xaa,0x6f};
     constexpr ContentView<typelist<reg1, reg2>> view(data);
@@ -106,5 +108,16 @@ namespace View {
     static_assert(view.get<content2>() == 0xf);
     static_assert(view.get<content3>() == 2);
     static_assert(view.get<multireg_content1>() == 0x2aa);
+    static_assert(view.get<multireg_content2>() == 0xaaf);
+
+    using content_neg1 = content<reg2, 0, 4, width_to_int_t<4>>;
+    using content_neg2 = content<reg1, 0, 8, width_to_int_t<8>>;
+    using content_neg3 = content<reg2, 4, 4, width_to_int_t<4>>;
+    using multireg_content_neg = multireg_content<typelist<content1, content3>, int16_t>;
+
+    static_assert(view.get<content_neg1>() == -1);
+    static_assert(view.get<content_neg2>() == -86);
+    static_assert(view.get<content_neg3>() == 6);
+    static_assert(view.get<multireg_content_neg>() == -342);
     
 } // namespace View
