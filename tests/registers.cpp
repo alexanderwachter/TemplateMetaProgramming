@@ -103,7 +103,7 @@ namespace View {
     using multireg_content2 = multireg_content<typelist<content2, content1>>;
 
     constexpr std::uint8_t data[] = {0xaa,0x6f};
-    constexpr ContentView<typelist<reg1, reg2>> view(data);
+    constexpr Registers<typelist<reg1, reg2>> view(data);
     static_assert(view.get<content1>() == 0xaa);
     static_assert(view.get<content2>() == 0xf);
     static_assert(view.get<content3>() == 2);

@@ -308,11 +308,13 @@ using address_datatype_t = typename address_datatype<ADDRESSES>::type;
 
 } // namespace internal
 
-namespace concepts
-{
-
 template<typename T>
 struct is_any_content : std::bool_constant<is_content_v<T> || is_multireg_content_v<T>> {};
+
+namespace concepts
+{
+template<typename T>
+concept any_content = is_any_content<T>::value;
 
 template<typename T>
 concept any_content_list = is_typelist_v<T> && all_of_v<T, is_any_content>;
@@ -357,6 +359,45 @@ struct all_datatypes_are_same
 template<typename T>
 inline constexpr bool all_datatypes_are_same_v = all_datatypes_are_same<T>::value;
 
+template<concepts::content T, concepts::content_list LIST>
+struct value_shift;
+
+template<concepts::content T, concepts::content... CONTENTs>
+struct value_shift<T, typelist<T, CONTENTs...>> : std::integral_constant<unsigned int, 0> {};
+
+template<concepts::content T, concepts::content FIRST, concepts::content... RESTs>
+struct value_shift<T, typelist<FIRST, RESTs...>> : std::integral_constant<unsigned int, value_shift<T, typelist<RESTs...>>::value + width_v<FIRST>> {};
+
+template<concepts::reg_list REGISTERS, concepts::multireg_content REG>
+struct extract_multireg;
+
+template<concepts::reg_list REGISTERS, typename DATATYPE, concepts::content... CONTENTs>
+struct extract_multireg<REGISTERS, multireg_content<typelist<CONTENTs...>, DATATYPE>>
+{
+    using contents = typelist<CONTENTs...>;
+    using reg_datatype = datatype_t<base_register_t<front_t<contents>>>;
+    template<concepts::content T, concepts::content_list LIST>
+    static constexpr std::make_unsigned_t<DATATYPE> get_part(const reg_datatype* data) noexcept
+    {
+        constexpr std::size_t index = index_of_v<base_register_t<T>, REGISTERS>;
+        constexpr auto shift = value_shift<T, LIST>::value;
+        return ((data[index] & mask_v<T>) >> offset_v<T>) << shift;
+    }
+
+    static constexpr std::make_unsigned_t<DATATYPE> extract(const reg_datatype* data) noexcept
+    {
+        return (get_part<CONTENTs, contents>(data) | ...);
+    }
+};
+
+template<typename T> 
+static inline constexpr auto fix_sign(std::make_unsigned_t<datatype_t<T>> value) noexcept -> datatype_t<T> 
+{
+    using datatype = datatype_t<T>;
+    const bool is_negative = (value & (1 << (width_v<T> - 1)));
+    constexpr datatype negative_mask = static_cast<datatype>(~mask_v<T>);
+    return is_negative ? value | negative_mask : value;
+}
 } // namespace internal
 
 template<typename>
@@ -377,81 +418,59 @@ struct address_array<CONTENTS>
     : address_array<register_list_t<std::conditional_t<any_of_v<CONTENTS, is_multireg_content>, internal::linearize_content_t<CONTENTS>, CONTENTS>>> {};
 
 
+template<concepts::content T>
+inline constexpr datatype_t<T> extract(datatype_t<base_register_t<T>> registerValue) noexcept
+requires (!std::is_signed_v<datatype_t<T>> || width_v<T> == sizeof(datatype_t<T>) * 8U)
+{
+    return ((registerValue & mask_v<T>) >> offset_v<T>);
+}
+
+template<concepts::content T>
+inline constexpr datatype_t<T> extract(datatype_t<base_register_t<T>> registerValue) noexcept
+requires (std::is_signed_v<datatype_t<T>> && width_v<T> < sizeof(datatype_t<T>) * 8U)
+{
+    return internal::fix_sign<T>((registerValue & mask_v<T>) >> offset_v<T>);
+}
+
+template<concepts::content T, concepts::reg_list REGISTERS>
+inline constexpr datatype_t<T> extract(const datatype_t<base_register_t<T>> *registerValue) noexcept
+{
+    static_assert(internal::all_datatypes_are_same_v<REGISTERS>, "registers must be of the same datatype");
+    constexpr std::size_t index = index_of_v<base_register_t<T>, REGISTERS>;
+    return extract<T>(registerValue[index]);
+}
+
+template<concepts::multireg_content T, concepts::reg_list REGISTERS>
+requires (!std::is_signed_v<datatype_t<T>> || width_v<T> == sizeof(datatype_t<T>) * 8U)
+inline constexpr datatype_t<T> extract(const datatype_t<front_t<REGISTERS>> *registerValue) noexcept
+{
+    return internal::extract_multireg<REGISTERS, T>::extract(registerValue);
+}
+
+template<concepts::multireg_content T, concepts::reg_list REGISTERS>
+inline constexpr datatype_t<T> extract(const datatype_t<front_t<REGISTERS>> *registerValue) noexcept
+requires (std::is_signed_v<datatype_t<T>> && width_v<T> < sizeof(datatype_t<T>) * 8U)
+{
+    return internal::fix_sign<T>(internal::extract_multireg<REGISTERS, T>::extract(registerValue));
+}
+
 template<concepts::reg_list REGISTERS>
-class ContentView {
+class Registers {
 public:
     static_assert(internal::all_datatypes_are_same_v<REGISTERS>, "registers must be of the same datatype");
 
     static constexpr std::size_t size = count_v<REGISTERS>;
     using view_type = std::span<const datatype_t<front_t<REGISTERS>>, size>;
 
-    constexpr ContentView(view_type raw_data) noexcept : data(raw_data) {}
+    constexpr Registers(view_type raw_data) noexcept : data(raw_data) {}
 
-    template<concepts::content T>
-    constexpr auto get() const noexcept -> datatype_t<T>
+    template<concepts::any_content T>
+    constexpr auto get() const noexcept
     {
-        constexpr std::size_t index = index_of_v<base_register_t<T>, REGISTERS>;
-        return ((data[index] & mask_v<T>) >> offset_v<T>);
-    }
-
-    template<concepts::content T>
-    constexpr auto get() const noexcept -> datatype_t<T> requires (std::is_signed_v<datatype_t<T>> && width_v<T> < sizeof(datatype_t<T>) * 8U)
-    {
-        constexpr std::size_t index = index_of_v<base_register_t<T>, REGISTERS>;
-        return fix_sign<T>((data[index] & mask_v<T>) >> offset_v<T>);
-    }
-
-    template<concepts::multireg_content T>
-    constexpr auto get() const noexcept -> datatype_t<T>
-    {
-        return get_multireg_value<T>::get(data);
-    }
-
-    template<concepts::multireg_content T>
-    constexpr auto get() const noexcept -> datatype_t<T> requires (std::is_signed_v<datatype_t<T>> && width_v<T> < sizeof(datatype_t<T>) * 8U)
-    {
-        return fix_sign<T>(get_multireg_value<T>::get(data));
+        return extract<T, REGISTERS>(data.data());
     }
 
 private:
-    template<typename T> 
-    static inline constexpr auto fix_sign(std::make_unsigned_t<datatype_t<T>> value) noexcept -> datatype_t<T> 
-    {
-        using datatype = datatype_t<T>;
-        const bool is_negative = (value & (1 << (width_v<T> - 1)));
-        constexpr datatype negative_mask = static_cast<datatype>(~mask_v<T>);
-        return is_negative ? value | negative_mask : value;
-    }
-
-    template<concepts::content T, concepts::content_list LIST>
-    struct value_shift;
-
-    template<concepts::content T, concepts::content... CONTENTs>
-    struct value_shift<T, typelist<T, CONTENTs...>> : std::integral_constant<unsigned int, 0> {};
-
-    template<concepts::content T, concepts::content FIRST, concepts::content... RESTs>
-    struct value_shift<T, typelist<FIRST, RESTs...>> : std::integral_constant<unsigned int, value_shift<T, typelist<RESTs...>>::value + width_v<FIRST>> {};
-
-    template<concepts::multireg_content REG>
-    struct get_multireg_value;
-
-    template<typename DATATYPE, concepts::content... CONTENTs>
-    struct get_multireg_value<multireg_content<typelist<CONTENTs...>, DATATYPE>>
-    {
-        template<concepts::content T, concepts::content_list LIST>
-        static constexpr std::make_unsigned_t<DATATYPE> get_part(view_type data) noexcept
-        {
-            constexpr std::size_t index = index_of_v<base_register_t<T>, REGISTERS>;
-            constexpr auto shift = value_shift<T, LIST>::value;
-            return ((data[index] & mask_v<T>) >> offset_v<T>) << shift;
-        }
-
-        static constexpr std::make_unsigned_t<DATATYPE> get(view_type data) noexcept
-        {
-            using list = typelist<CONTENTs...>;
-            return (get_part<CONTENTs, list>(data) | ...);
-        }
-    };
 
     view_type data;
 };
