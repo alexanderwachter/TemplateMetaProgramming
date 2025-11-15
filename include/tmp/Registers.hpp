@@ -75,7 +75,25 @@ struct base_content;
 template<typename T>
 using base_content_t = typename base_content<T>::type;
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, std::unsigned_integral ADDRESS_T, typename DATATYPE = width_to_uint_t<WIDTH>>
+template<typename T>
+struct is_attribute : std::false_type {};
+
+template<typename T>
+inline constexpr bool is_attribute_v = is_attribute<T>::value;
+
+namespace concepts
+{
+template<typename T>
+concept attribute = is_attribute_v<T>;
+
+template<typename T>
+concept attribute_list = is_typelist_v<T> && all_of_v<T, is_attribute>;
+} // namespace concepts
+
+template<concepts::attribute, typename>
+struct has_attribute : std::false_type {};
+
+template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, std::unsigned_integral ADDRESS_T, typename DATATYPE = width_to_uint_t<WIDTH>, concepts::attribute_list ATTRIBUTES = typelist<>>
 struct reg {
     static_assert(ADDRESS <= std::numeric_limits<ADDRESS_T>::max(), "Address value does not fit into the specified datatype");
     static_assert(RESET_VALUE <= std::numeric_limits<DATATYPE>::max(), "Reset Value does not fit into the specified datatype");
@@ -84,8 +102,8 @@ struct reg {
 template<typename>
 struct is_reg : std::false_type {};
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE>
-struct is_reg<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE>> : std::true_type {};
+template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
+struct is_reg<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::true_type {};
 
 template<typename T>
 inline constexpr bool is_reg_v = is_reg<T>::value;
@@ -97,20 +115,23 @@ template<typename T>
 concept reg_list = is_typelist_v<T> && any_of_v<T, is_reg>;
 } // namespace concepts
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE>
-struct address<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE>> : std::integral_constant<ADDRESS_T, ADDRESS> {};
+template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
+struct address<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<ADDRESS_T, ADDRESS> {};
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE>
-struct width<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE>> : std::integral_constant<std::decay_t<decltype(WIDTH)>, WIDTH> {};
+template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
+struct width<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<std::decay_t<decltype(WIDTH)>, WIDTH> {};
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE>
-struct mask<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE>> : std::integral_constant<DATATYPE, ((1U << WIDTH) - 1U)> {};
+template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
+struct mask<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<DATATYPE, ((1U << WIDTH) - 1U)> {};
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE>
-struct datatype<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE>> : std::type_identity<DATATYPE> {};
+template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
+struct datatype<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::type_identity<DATATYPE> {};
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE>
-struct reset_value<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE>> : std::integral_constant<DATATYPE, RESET_VALUE> {};
+template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
+struct reset_value<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<DATATYPE, RESET_VALUE> {};
+
+template<concepts::attribute ATTRIBUTE, std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
+struct has_attribute<ATTRIBUTE, reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : has_a<ATTRIBUTES, ATTRIBUTE> {};
 
 template<concepts::reg REGISTER, unsigned int OFFSET = 0U, unsigned int WIDTH = width_v<REGISTER>, typename DATATYPE = width_to_uint_t<WIDTH>>
 struct content {

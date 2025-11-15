@@ -5,6 +5,7 @@
  */
 
 #include <tmp/Registers.hpp>
+#include <tmp/RegisterAttributes.hpp>
 #include <type_traits>
 #include <algorithm>
 #include <array>
@@ -121,3 +122,13 @@ namespace View {
     static_assert(view.get<multireg_content_neg>() == -342);
     
 } // namespace View
+
+namespace Attributes
+{
+    using readonly_reg = reg<1U, 0, 8U, std::uint8_t, std::uint8_t, attributes<readonly>>;
+    using writeonly_reg = reg<1U, 0, 8U, std::uint8_t, std::uint8_t, attributes<writeonly>>;
+    static_assert(is_readonly_v<readonly_reg>);
+    static_assert(!is_writeonly_v<readonly_reg>);
+    static_assert(!is_readonly_v<writeonly_reg>);
+    static_assert(is_writeonly_v<writeonly_reg>);
+} // namespace Attributes
