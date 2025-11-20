@@ -178,3 +178,18 @@ namespace Attributes
     static_assert(is_readonly_v<multiregto_from_content>);
     static_assert(is_readonly_v<multireg_ro>);
 } // namespace Attributes
+
+namespace Group {
+    template<unsigned int ADDRESS>
+    using my_reg = reg<ADDRESS, 0U, 8U, unsigned int>;
+    using reg1 = my_reg<1U>;
+    using reg2 = my_reg<2U>;
+    using reg4 = my_reg<4U>;
+    using reg5 = my_reg<5U>;
+    using reg7 = my_reg<7U>;
+
+    using all_reg = register_list<reg1, reg2, reg4, reg5, reg7>;
+    using expected = typelist<register_list<reg1, reg2>, register_list<reg4, reg5>, register_list<reg7>>;
+
+    static_assert(std::is_same_v<group_contiguous_address_t<all_reg>, expected>);
+};

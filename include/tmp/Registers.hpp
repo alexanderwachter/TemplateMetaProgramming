@@ -361,4 +361,45 @@ concept any_content_list = is_typelist_v<T> && all_of_v<T, is_any_content>;
 template<concepts::any_content... CONTENTs>
 using content_list = typelist<CONTENTs...>;
 
+
+namespace internal {
+
+template<concepts::reg_list>
+struct group_contiguous_helper;
+
+template<concepts::reg FIRST>
+struct group_contiguous_helper<register_list<FIRST>>
+{
+    using groups = typelist<>;
+    using current_group = register_list<FIRST>;
+};
+
+template<concepts::reg FIRST, concepts::reg... RESTs>
+struct group_contiguous_helper<register_list<FIRST, RESTs...>>
+{
+    using recursive = group_contiguous_helper<register_list<RESTs...>>;
+    static constexpr bool is_previous_address = address_v<FIRST> + 1 == address_v<front_t<typename recursive::current_group>>;
+    
+    using groups = std::conditional_t<is_previous_address, typename recursive::groups, prepend_t<typename recursive::current_group, typename recursive::groups>>;
+    using current_group = std::conditional_t<is_previous_address, prepend_t<FIRST, typename recursive::current_group>, typelist<FIRST>>;
+};
+
+template<concepts::reg_list LIST>
+struct group_contiguous_helper_final
+{
+    using groups = group_contiguous_helper<LIST>;
+    using type = prepend_t<typename groups::current_group, typename groups::groups>;
+};
+
+} // namespace internal
+
+template<concepts::reg_list LIST>
+struct group_contiguous_address
+{
+    using type = typename internal::group_contiguous_helper_final<LIST>::type;
+};
+
+template<concepts::reg_list LIST>
+using group_contiguous_address_t = typename group_contiguous_address<LIST>::type;
+
 } // namespace tmp
