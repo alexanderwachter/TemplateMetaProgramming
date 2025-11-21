@@ -125,7 +125,7 @@ template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, un
 struct address<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<ADDRESS_T, ADDRESS> {};
 
 template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
-struct width<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<std::decay_t<decltype(WIDTH)>, WIDTH> {};
+struct width<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<unsigned int, WIDTH> {};
 
 template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
 struct mask<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<DATATYPE, ((1U << WIDTH) - 1U)> {};
@@ -138,6 +138,31 @@ struct reset_value<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBU
 
 template<concepts::attribute ATTRIBUTE, std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
 struct has_attribute<ATTRIBUTE, reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : has_a<ATTRIBUTES, ATTRIBUTE> {};
+
+template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES = typelist<>>
+struct reg8 {};
+
+template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct address<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::integral_constant<decltype(ADDRESS), ADDRESS> {};
+
+template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct width<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::integral_constant<unsigned int, 8U> {};
+
+template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct mask<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::integral_constant<std::uint8_t, 0xff> {};
+
+template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct datatype<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::type_identity<std::uint8_t> {};
+
+template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct reset_value<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::integral_constant<std::uint8_t, RESET_VALUE> {};
+
+template<concepts::attribute ATTRIBUTE, std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct has_attribute<ATTRIBUTE, reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : has_a<ATTRIBUTES, ATTRIBUTE> {};
+
+template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct is_reg<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::true_type {};
+
 
 template<concepts::reg REGISTER, unsigned int OFFSET = 0U, unsigned int WIDTH = width_v<REGISTER>, concepts::attribute_list ATTRIBUTES = typelist<>, typename DATATYPE = width_to_uint_t<WIDTH>>
 struct content {
@@ -169,10 +194,10 @@ template<concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typena
 struct address<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::integral_constant<typename address<REGISTER>::value_type, address_v<REGISTER>> {};
 
 template<concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typename ATTRIBUTES, typename DATATYPE>
-struct width<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::integral_constant<std::decay_t<decltype(WIDTH)>, WIDTH> {};
+struct width<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::integral_constant<unsigned int, WIDTH> {};
 
 template<concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typename ATTRIBUTES, typename DATATYPE>
-struct offset<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::integral_constant<std::decay_t<decltype(OFFSET)>, OFFSET> {};
+struct offset<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::integral_constant<unsigned int, OFFSET> {};
 
 template<concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typename ATTRIBUTES, typename DATATYPE>
 struct mask<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::integral_constant<datatype_t<REGISTER>, (((1U << WIDTH) - 1U) << OFFSET)> {};

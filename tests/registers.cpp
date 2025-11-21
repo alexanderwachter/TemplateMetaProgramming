@@ -27,6 +27,16 @@ namespace Register {
     static_assert(mask_v<reg7> == 0b01111111);
     static_assert(std::is_same_v<datatype_t<reg32>, std::uint32_t>);
     static_assert(std::is_same_v<datatype_t<reg7>, std::uint8_t>);
+
+    using reg8_t = reg8<1U, 42U, attributes<readonly>>;
+    static_assert(is_reg_v<reg8_t>);
+    static_assert(address_v<reg8_t> == 1U);
+    static_assert(reset_value_v<reg8_t> == 42U);
+    static_assert(width_v<reg8_t> == 8U);
+    static_assert(mask_v<reg8_t> == 0xff);
+    static_assert(std::is_same_v<datatype_t<reg8_t>, std::uint8_t>);
+    static_assert(has_attribute_v<readonly, reg8_t>);
+
 } // Register
 
 namespace Content {
