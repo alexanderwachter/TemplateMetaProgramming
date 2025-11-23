@@ -18,56 +18,167 @@
 
 namespace tmp {
 
-template<typename>
-struct address;
+template<std::unsigned_integral ADDRESS_TYPE, ADDRESS_TYPE VALUE>
+struct address : std::integral_constant<ADDRESS_TYPE, VALUE> {};
 
 template<typename T>
-inline constexpr typename address<T>::value_type address_v = address<T>::value;
+inline constexpr typename T::value_type address_v = T::value;
+
+template<typename T>
+using address_value_t = typename T::value_type;
 
 template<typename>
 struct is_address : std::false_type {};
 
-template<typename T>
-struct is_address<address<T>> : std::true_type {};
+template<std::unsigned_integral ADDRESS_TYPE, ADDRESS_TYPE VALUE>
+struct is_address<address<ADDRESS_TYPE, VALUE>> : std::true_type {};
 
 template<typename T>
 inline constexpr bool is_address_v = is_address<T>::value;
 
-template<typename>
-struct width;
-
+namespace concepts
+{
 template<typename T>
-inline constexpr typename width<T>::value_type width_v = width<T>::value;
+concept address = is_address_v<T>;
+} // namespace concepts
 
-template<typename>
-struct offset;
-
-template<typename T>
-inline constexpr typename offset<T>::value_type offset_v = offset<T>::value;
 
 template<typename>
-struct mask;
+struct get_address;
 
 template<typename T>
-inline constexpr typename mask<T>::value_type mask_v = mask<T>::value;
+using get_address_t = typename get_address<T>::type;
+
+template<typename T>
+inline constexpr typename get_address_t<T>::value_type get_address_v = get_address_t<T>::value;
+
+template<std::size_t WIDTH>
+struct width : std::integral_constant<std::size_t, WIDTH> {};
+
+template<typename T>
+struct is_width : std::false_type {};
+
+template<std::size_t V>
+struct is_width<width<V>> : std::true_type {};
+
+template<typename T>
+inline constexpr bool is_width_v = is_width<T>::value;
+
+namespace concepts
+{
+template<typename T>
+concept width = is_width_v<T>;
+} // namespace concepts
 
 template<typename>
-struct reset_value;
+struct get_width;
 
 template<typename T>
-inline constexpr typename reset_value<T>::value_type reset_value_v = reset_value<T>::value;
+using get_width_t = typename get_width<T>::type;
+
+template<typename T>
+inline constexpr typename get_width_t<T>::value_type get_width_v = get_width_t<T>::value;
+
+template<std::size_t WIDTH>
+struct offset : std::integral_constant<std::size_t, WIDTH> {};
+
+template<typename T>
+struct is_offset : std::false_type {};
+
+template<std::size_t V>
+struct is_offset<offset<V>> : std::true_type {};
+
+template<typename T>
+inline constexpr bool is_offset_v = is_offset<T>::value;
+
+namespace concepts
+{
+template<typename T>
+concept offset = is_offset_v<T>;
+} // namespace concepts
 
 template<typename>
-struct datatype;
+struct get_offset;
 
 template<typename T>
-using datatype_t = typename datatype<T>::type;
+using get_offset_t = typename get_offset<T>::type;
+
+template<typename T>
+inline constexpr typename get_offset_t<T>::value_type get_offset_v = get_offset_t<T>::value;
 
 template<typename>
-struct base_register;
+struct get_mask;
 
 template<typename T>
-using base_register_t = typename base_register<T>::type;
+inline constexpr typename get_mask<T>::value_type get_mask_v = get_mask<T>::value;
+
+template<std::integral auto VALUE>
+struct reset_value
+{
+    using type = reset_value;
+    using value_type = decltype(VALUE);
+    static constexpr value_type value = VALUE;
+};
+
+template<typename T>
+inline constexpr typename T::value_type reset_value_v = T::value;
+
+template<typename T>
+using reset_value_t = typename T::value_type;
+
+template<typename>
+struct is_reset_value : std::false_type {};
+
+template<std::integral auto VALUE>
+struct is_reset_value<reset_value<VALUE>> : std::true_type {};
+
+template<typename T>
+inline constexpr bool is_reset_value_v = is_reset_value<T>::value;
+
+namespace concepts
+{
+template<typename T>
+concept reset_value = is_reset_value_v<T>;
+} // namespace concepts
+
+template<typename>
+struct get_reset_value;
+
+template<typename T>
+using get_reset_value_t = typename get_reset_value<T>::type;
+
+template<typename T>
+inline constexpr typename get_reset_value_t<T>::value_type get_reset_value_v = get_reset_value_t<T>::value;
+
+template<std::integral T>
+struct datatype : std::type_identity<T> {};
+
+template<typename T>
+struct is_datatype : std::false_type {};
+
+template<std::integral T>
+struct is_datatype<datatype<T>> : std::true_type {};
+
+template<typename T>
+inline constexpr bool is_datatype_v = is_datatype<T>::value;
+
+namespace concepts
+{
+template<typename T>
+concept datatype = is_datatype_v<T>;
+} // namespace concepts
+
+template<typename>
+struct get_datatype;
+
+template<typename T>
+using get_datatype_t = typename get_datatype<T>::type;
+
+template<typename>
+struct get_register;
+
+template<typename T>
+using get_register_t = typename get_register<T>::type;
 
 template<typename>
 struct base_content;
@@ -96,17 +207,17 @@ struct has_attribute : std::false_type {};
 template<concepts::attribute ATTRIBUTE, typename T>
 inline constexpr bool has_attribute_v = has_attribute<ATTRIBUTE, T>::value;
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, std::unsigned_integral ADDRESS_T, typename DATATYPE = width_to_uint_t<WIDTH>, concepts::attribute_list ATTRIBUTES = typelist<>>
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::datatype DATATYPE, concepts::attribute_list ATTRIBUTES = typelist<>>
 struct reg {
-    static_assert(ADDRESS <= std::numeric_limits<ADDRESS_T>::max(), "Address value does not fit into the specified datatype");
-    static_assert(RESET_VALUE <= std::numeric_limits<DATATYPE>::max(), "Reset Value does not fit into the specified datatype");
+    static_assert(RESET_VALUE::value <= std::numeric_limits<DATATYPE>::max(), "Reset Value does not fit into the specified datatype");
+    static_assert(RESET_VALUE::value >= 0);
 };
 
 template<typename>
 struct is_reg : std::false_type {};
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
-struct is_reg<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::true_type {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::datatype DATATYPE, typename ATTRIBUTES>
+struct is_reg<reg<ADDRESS, RESET_VALUE, DATATYPE, ATTRIBUTES>> : std::true_type {};
 
 template<typename T>
 inline constexpr bool is_reg_v = is_reg<T>::value;
@@ -121,59 +232,62 @@ concept reg_list = is_typelist_v<T> && any_of_v<T, is_reg>;
 template<concepts::reg... REGISTERs>
 using register_list = typelist<REGISTERs...>;
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
-struct address<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<ADDRESS_T, ADDRESS> {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::datatype DATATYPE, typename ATTRIBUTES>
+struct get_address<reg<ADDRESS, RESET_VALUE, DATATYPE, ATTRIBUTES>> : std::type_identity<ADDRESS> {};
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
-struct width<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<unsigned int, WIDTH> {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::datatype DATATYPE, typename ATTRIBUTES>
+struct get_width<reg<ADDRESS, RESET_VALUE, DATATYPE, ATTRIBUTES>> : std::type_identity<width<sizeof(typename DATATYPE::type) * 8U>> {};
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
-struct mask<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<DATATYPE, ((1U << WIDTH) - 1U)> {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::datatype DATATYPE, typename ATTRIBUTES>
+struct get_mask<reg<ADDRESS, RESET_VALUE, DATATYPE, ATTRIBUTES>> : std::integral_constant<typename DATATYPE::type, std::numeric_limits<typename DATATYPE::type>::max()> {};
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
-struct datatype<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::type_identity<DATATYPE> {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::datatype DATATYPE, typename ATTRIBUTES>
+struct get_datatype<reg<ADDRESS, RESET_VALUE, DATATYPE, ATTRIBUTES>> : DATATYPE {};
 
-template<std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
-struct reset_value<reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : std::integral_constant<DATATYPE, RESET_VALUE> {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::datatype DATATYPE, typename ATTRIBUTES>
+struct get_reset_value<reg<ADDRESS, RESET_VALUE, DATATYPE, ATTRIBUTES>> : std::type_identity<reset_value<static_cast<typename DATATYPE::type>(RESET_VALUE::value)>> {};
 
-template<concepts::attribute ATTRIBUTE, std::unsigned_integral auto ADDRESS, std::integral auto RESET_VALUE, unsigned int WIDTH, typename ADDRESS_T, typename DATATYPE, typename ATTRIBUTES>
-struct has_attribute<ATTRIBUTE, reg<ADDRESS, RESET_VALUE, WIDTH, ADDRESS_T, DATATYPE, ATTRIBUTES>> : has_a<ATTRIBUTES, ATTRIBUTE> {};
+template<concepts::attribute ATTRIBUTE, concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::datatype DATATYPE, typename ATTRIBUTES>
+struct has_attribute<ATTRIBUTE, reg<ADDRESS, RESET_VALUE, DATATYPE, ATTRIBUTES>> : has_a<ATTRIBUTES, ATTRIBUTE> {};
 
-template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES = typelist<>>
-struct reg8 {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::typelist ATTRIBUTES = typelist<>>
+struct reg8 {
+    static_assert(RESET_VALUE::value <= std::numeric_limits<std::uint8_t>::max());
+    static_assert(RESET_VALUE::value >= 0);
+};
 
-template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
-struct address<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::integral_constant<decltype(ADDRESS), ADDRESS> {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct get_address<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : ADDRESS {};
 
-template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
-struct width<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::integral_constant<unsigned int, 8U> {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct get_width<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::type_identity<width<8U>> {};
 
-template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
-struct mask<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::integral_constant<std::uint8_t, 0xff> {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct get_mask<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::integral_constant<std::uint8_t, 0xff> {};
 
-template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
-struct datatype<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::type_identity<std::uint8_t> {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct get_datatype<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : datatype<std::uint8_t> {};
 
-template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
-struct reset_value<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::integral_constant<std::uint8_t, RESET_VALUE> {};
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::typelist ATTRIBUTES>
+struct get_reset_value<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::type_identity<reset_value<static_cast<uint8_t>(RESET_VALUE::value)>>{};
 
-template<concepts::attribute ATTRIBUTE, std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
+template<concepts::attribute ATTRIBUTE, concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::typelist ATTRIBUTES>
 struct has_attribute<ATTRIBUTE, reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : has_a<ATTRIBUTES, ATTRIBUTE> {};
 
-template<std::unsigned_integral auto ADDRESS, std::uint8_t RESET_VALUE, concepts::typelist ATTRIBUTES>
+template<concepts::address ADDRESS, concepts::reset_value RESET_VALUE, concepts::typelist ATTRIBUTES>
 struct is_reg<reg8<ADDRESS, RESET_VALUE, ATTRIBUTES>> : std::true_type {};
 
 
-template<concepts::reg REGISTER, unsigned int OFFSET = 0U, unsigned int WIDTH = width_v<REGISTER>, concepts::attribute_list ATTRIBUTES = typelist<>, typename DATATYPE = width_to_uint_t<WIDTH>>
+template<concepts::reg REGISTER, concepts::offset OFFSET = offset<0>, concepts::width WIDTH = get_width_t<REGISTER>, concepts::attribute_list ATTRIBUTES = typelist<>, typename DATATYPE = datatype<width_to_uint_t<WIDTH::value>>>
 struct content {
-    static_assert(WIDTH + OFFSET < sizeof(DATATYPE) * 8U, "Content does not fit into datatype");
-    static_assert(sizeof(DATATYPE) <= sizeof(datatype_t<REGISTER>), "Datatype does not fit into the register");
+    static_assert(WIDTH::value + OFFSET::value < sizeof(DATATYPE) * 8U, "Content does not fit into datatype");
+    static_assert(sizeof(DATATYPE) <= sizeof(get_datatype_t<REGISTER>), "Datatype does not fit into the register");
 };
 
 template<typename>
 struct is_content : std::false_type {};
 
-template<concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typename ATTRIBUTES, typename DATATYPE >
+template<concepts::reg REGISTER, concepts::offset OFFSET, concepts::width WIDTH, typename ATTRIBUTES, concepts::datatype DATATYPE >
 struct is_content<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::true_type {};
 
 template<typename T>
@@ -187,25 +301,25 @@ template<typename T>
 concept content = is_content_v<T>;
 } // namespace concepts
 
-template<concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typename ATTRIBUTES, typename DATATYPE>
-struct base_register<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::type_identity<REGISTER> {};
+template<concepts::reg REGISTER, concepts::offset OFFSET, concepts::width WIDTH, typename ATTRIBUTES, concepts::datatype DATATYPE>
+struct get_register<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::type_identity<REGISTER> {};
 
-template<concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typename ATTRIBUTES, typename DATATYPE>
-struct address<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::integral_constant<typename address<REGISTER>::value_type, address_v<REGISTER>> {};
+template<concepts::reg REGISTER, concepts::offset OFFSET, concepts::width WIDTH, typename ATTRIBUTES, concepts::datatype DATATYPE>
+struct get_address<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : get_address_t<REGISTER> {};
 
-template<concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typename ATTRIBUTES, typename DATATYPE>
-struct width<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::integral_constant<unsigned int, WIDTH> {};
+template<concepts::reg REGISTER, concepts::offset OFFSET, concepts::width WIDTH, typename ATTRIBUTES, concepts::datatype DATATYPE>
+struct get_width<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> :  std::type_identity<WIDTH> {};
 
-template<concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typename ATTRIBUTES, typename DATATYPE>
-struct offset<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::integral_constant<unsigned int, OFFSET> {};
+template<concepts::reg REGISTER, concepts::offset OFFSET, concepts::width WIDTH, typename ATTRIBUTES, concepts::datatype DATATYPE>
+struct get_offset<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::type_identity<OFFSET> {};
 
-template<concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typename ATTRIBUTES, typename DATATYPE>
-struct mask<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::integral_constant<datatype_t<REGISTER>, (((1U << WIDTH) - 1U) << OFFSET)> {};
+template<concepts::reg REGISTER, concepts::offset OFFSET, concepts::width WIDTH, typename ATTRIBUTES, concepts::datatype DATATYPE>
+struct get_mask<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::integral_constant<get_datatype_t<REGISTER>, (((1U << WIDTH::value) - 1U) << OFFSET::value)> {};
 
-template<concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typename ATTRIBUTES, typename DATATYPE>
-struct datatype<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : std::type_identity<DATATYPE> {};
+template<concepts::reg REGISTER, concepts::offset OFFSET, concepts::width WIDTH, typename ATTRIBUTES, concepts::datatype DATATYPE>
+struct get_datatype<content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> : DATATYPE {};
 
-template<concepts::attribute ATTRIBUTE, concepts::reg REGISTER, unsigned int OFFSET, unsigned int WIDTH, typename ATTRIBUTES, typename DATATYPE>
+template<concepts::attribute ATTRIBUTE, concepts::reg REGISTER, concepts::offset OFFSET, concepts::width WIDTH, typename ATTRIBUTES, concepts::datatype DATATYPE>
 struct has_attribute<ATTRIBUTE, content<REGISTER, OFFSET, WIDTH, ATTRIBUTES, DATATYPE>> :
     std::bool_constant<has_a_v<ATTRIBUTES, ATTRIBUTE> || has_attribute_v<ATTRIBUTE, REGISTER>> {};
 
@@ -224,15 +338,15 @@ concept content_list = is_content_list_v<T>;
 } // namespace concepts
 
 template<concepts::content... CONTENTs>
-struct width<typelist<CONTENTs...>> : std::integral_constant<unsigned int, (width_v<CONTENTs> + ...)> {};
+struct get_width<typelist<CONTENTs...>> : std::type_identity<width<(get_width_v<CONTENTs> + ...)>> {};
 
-template<concepts::content_list CONTENT_LIST, concepts::attribute_list ATTRIBUTES = typelist<>, typename DATATYPE = width_to_uint_t<width_v<CONTENT_LIST>>>
+template<concepts::content_list CONTENT_LIST, concepts::attribute_list ATTRIBUTES = typelist<>, concepts::datatype DATATYPE = datatype<width_to_uint_t<get_width_v<CONTENT_LIST>>>>
 struct multireg_content {};
 
 template<typename>
 struct is_multireg_content : std::false_type {};
 
-template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, typename DATATYPE>
+template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, concepts::datatype DATATYPE>
 struct is_multireg_content<multireg_content<CONTENT_LIST, ATTRIBUTES, DATATYPE>> : std::true_type {};
 
 template<typename T>
@@ -245,33 +359,33 @@ template<typename T>
 concept value_content = is_content_v<T> || is_multireg_content_v<T>;
 } // namespace concepts
 
-template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, typename DATATYPE>
-struct width<multireg_content<CONTENT_LIST, ATTRIBUTES, DATATYPE>> : std::integral_constant<unsigned int, width_v<CONTENT_LIST>> {};
+template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, concepts::datatype DATATYPE>
+struct get_width<multireg_content<CONTENT_LIST, ATTRIBUTES, DATATYPE>> : width<get_width_v<CONTENT_LIST>> {};
 
-template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, typename DATATYPE>
-struct mask<multireg_content<CONTENT_LIST, ATTRIBUTES, DATATYPE>> : std::integral_constant<DATATYPE, ((1U << width_v<CONTENT_LIST>) - 1U)> {};
+template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, concepts::datatype DATATYPE>
+struct get_mask<multireg_content<CONTENT_LIST, ATTRIBUTES, DATATYPE>> : std::integral_constant<typename DATATYPE::type, ((1U << get_width_v<CONTENT_LIST>) - 1U)> {};
 
 template<concepts::content... CONTENTs>
-struct base_register<typelist<CONTENTs...>> {
-    using type = transform_t<typelist<CONTENTs...>, base_register>;
+struct get_register<typelist<CONTENTs...>> {
+    using type = transform_t<typelist<CONTENTs...>, get_register>;
 };
 
-template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, typename DATATYPE>
-struct base_register<multireg_content<CONTENT_LIST, ATTRIBUTES, DATATYPE>> {
-    using type = base_register_t<CONTENT_LIST>;
+template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, concepts::datatype DATATYPE>
+struct get_register<multireg_content<CONTENT_LIST, ATTRIBUTES, DATATYPE>> {
+    using type = get_register_t<CONTENT_LIST>;
 };
 
-template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, typename DATATYPE>
+template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, concepts::datatype DATATYPE>
 struct base_content<multireg_content<CONTENT_LIST, ATTRIBUTES, DATATYPE>> : std::type_identity<CONTENT_LIST> {};
 
-template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, typename DATATYPE>
-struct datatype<multireg_content<CONTENT_LIST, ATTRIBUTES, DATATYPE>> : std::type_identity<DATATYPE> {};
+template<concepts::content_list CONTENT_LIST, typename ATTRIBUTES, concepts::datatype DATATYPE>
+struct get_datatype<multireg_content<CONTENT_LIST, ATTRIBUTES, DATATYPE>> : DATATYPE {};
 
-template<concepts::attribute ATTRIBUTE, concepts::content_list CONTENT_LIST, typename ATTRIBUTES, typename DATATYPE>
+template<concepts::attribute ATTRIBUTE, concepts::content_list CONTENT_LIST, typename ATTRIBUTES, concepts::datatype DATATYPE>
 struct has_attribute<ATTRIBUTE, multireg_content<CONTENT_LIST, ATTRIBUTES, DATATYPE>> :
     std::bool_constant<has_a_v<ATTRIBUTES, ATTRIBUTE> || has_attribute_v<ATTRIBUTE, CONTENT_LIST>> {};
 
-template<concepts::value_content CONTENT, datatype_t<CONTENT> VALUE>
+template<concepts::value_content CONTENT, get_datatype_t<CONTENT> VALUE>
 struct value {};
 
 template<typename>
@@ -290,10 +404,10 @@ concept value = is_value_v<T>;
 } // namespace concepts
 
 template<concepts::content CONTENT, auto VALUE>
-struct width<value<CONTENT, VALUE>> : std::integral_constant<typename width<CONTENT>::value_type, width_v<CONTENT>> {};
+struct get_width<value<CONTENT, VALUE>> : width<get_width_v<CONTENT>> {};
 
 template<concepts::multireg_content CONTENT, auto VALUE>
-struct width<value<CONTENT, VALUE>> : std::integral_constant<unsigned int, width_v<CONTENT>> {};
+struct get_width<value<CONTENT, VALUE>> : std::integral_constant<unsigned int, get_width_v<CONTENT>> {};
 
 template<concepts::value_content CONTENT, auto VALUE>
 struct base_content<value<CONTENT, VALUE>> : std::type_identity<CONTENT> {};
@@ -318,9 +432,9 @@ template<concepts::content_list CONTENTS>
 struct create_register_list
 {
     template<concepts::reg REG1, concepts::reg REG2>
-    struct by_address : std::bool_constant<address_v<REG1> < address_v<REG2>> {};
+    struct by_address : std::bool_constant<get_address_v<REG1> < get_address_v<REG2>> {};
 
-    using type = sort_t<unique_t<base_register_t<CONTENTS>>, by_address>;
+    using type = sort_t<unique_t<get_register_t<CONTENTS>>, by_address>;
 };
 
 template<concepts::content_list CONTENTS>
@@ -335,10 +449,7 @@ using address_list_t = typename address_list<T>::type;
 template<concepts::reg_list REGISTERS>
 struct address_list<REGISTERS>
 {
-    template<typename T>
-    struct to_address : std::type_identity<address<T>> {};
-
-    using type = transform_t<REGISTERS, to_address>;
+    using type = transform_t<REGISTERS, get_address>;
 };
 
 template<concepts::content_list CONTENT>
@@ -403,7 +514,7 @@ template<concepts::reg FIRST, concepts::reg... RESTs>
 struct group_contiguous_helper<register_list<FIRST, RESTs...>>
 {
     using recursive = group_contiguous_helper<register_list<RESTs...>>;
-    static constexpr bool is_previous_address = address_v<FIRST> + 1 == address_v<front_t<typename recursive::current_group>>;
+    static constexpr bool is_previous_address = get_address_v<FIRST> + 1 == get_address_v<front_t<typename recursive::current_group>>;
     
     using groups = std::conditional_t<is_previous_address, typename recursive::groups, prepend_t<typename recursive::current_group, typename recursive::groups>>;
     using current_group = std::conditional_t<is_previous_address, prepend_t<FIRST, typename recursive::current_group>, typelist<FIRST>>;
